@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import { Coordinates } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
 import RouteSimulation from './RouteSimulation';
+import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
 
 interface MapContainerProps {
   mapboxToken: string;
@@ -44,11 +45,13 @@ const MapContainer = ({
     }
     
     if (sourceMarker.current) {
+      console.log('Removing source marker');
       sourceMarker.current.remove();
       sourceMarker.current = null;
     }
     
     if (destinationMarker.current) {
+      console.log('Removing destination marker');
       destinationMarker.current.remove();
       destinationMarker.current = null;
     }
@@ -58,6 +61,8 @@ const MapContainer = ({
   useEffect(() => {
     if (!mapContainer.current) return;
 
+    console.log('Initializing map');
+
     try {
       mapboxgl.accessToken = mapboxToken;
       
@@ -65,24 +70,23 @@ const MapContainer = ({
         throw new Error('Your browser does not support Mapbox GL');
       }
 
-      const newMap = new mapboxgl.Map({
+      map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/dark-v11',
         center: [-74.5, 40],
-        zoom: 9,
+        zoom: 12,
       });
 
-      newMap.on('load', () => {
+      map.current.on('load', () => {
         console.log('Map loaded successfully');
         setIsMapLoaded(true);
-        map.current = newMap;
         toast({
           title: "Success",
           description: "Map initialized successfully",
         });
       });
 
-      newMap.on('error', (e) => {
+      map.current.on('error', (e) => {
         console.error('Mapbox error:', e);
         toast({
           variant: "destructive",
@@ -91,14 +95,9 @@ const MapContainer = ({
         });
       });
 
-      newMap.addControl(
-        new mapboxgl.NavigationControl(),
-        'top-right'
-      );
-
       return () => {
         clearRouteAndMarkers();
-        newMap.remove();
+        map.current.remove();
         map.current = null;
         setIsMapLoaded(false);
       };
@@ -125,25 +124,32 @@ const MapContainer = ({
 
     // Update source marker
     if (source) {
-      sourceMarker.current = new mapboxgl.Marker({ color: '#FF0000' })
+      console.log('Adding source marker:', source);
+      sourceMarker.current = new mapboxgl.Marker({ color: '#808080' })
         .setLngLat([source.lng, source.lat])
         .addTo(map.current);
-      
-      map.current.flyTo({
-        center: [source.lng, source.lat],
-        zoom: 12
-      });
+    } else {
+      console.log('No source marker');
     }
 
     // Update destination marker
     if (destination) {
-      destinationMarker.current = new mapboxgl.Marker({ color: '#00FF00' })
+      console.log('Adding destination marker:', destination);
+      destinationMarker.current = new mapboxgl.Marker({ color: '#505050' })
         .setLngLat([destination.lng, destination.lat])
         .addTo(map.current);
+      
+       map.current.flyTo({
+          center: [source.lng, source.lat],
+          zoom: 12,
+        });
+    } else {
+      console.log('No destination marker');
     }
 
     // Calculate route if both markers are present
     if (source && destination) {
+      console.log('Calculating route');
       calculateRoute(source, destination);
     }
   }, [source, destination]);
@@ -158,39 +164,37 @@ const MapContainer = ({
       );
 
       const data = await response.json();
+      const route = data.routes[0].geometry;
 
       if (!data.routes?.[0]) {
         throw new Error('No route found');
       }
 
-      const routeFeature = {
+      // Add route to the map
+    map.current.addSource('route', {
+      type: 'geojson',
+      data: {
         type: 'Feature',
         properties: {},
-        geometry: data.routes[0].geometry
-      } as GeoJSON.Feature<GeoJSON.LineString>;
+        geometry: route,
+      },
+    });
 
-      // Add the route to the map
-      map.current.addSource('route', {
-        type: 'geojson',
-        data: routeFeature
-      });
+    map.current.addLayer({
+      id: 'route',
+      type: 'line',
+      source: 'route',
+      layout: {
+      'line-join': 'round',
+      'line-cap': 'round',
+      },
+      paint: {
+      'line-color': '#FF6600', // Neon orange color
+      'line-width': 6,
+      },
+    });
 
-      map.current.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#3887be',
-          'line-width': 5,
-          'line-opacity': 0.75
-        }
-      });
-
-      setCurrentRoute(routeFeature);
+      // setCurrentRoute(routeFeature);
 
       const coordinates = data.routes[0].geometry.coordinates;
       const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
@@ -198,7 +202,7 @@ const MapContainer = ({
       }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
 
       map.current.fitBounds(bounds, {
-        padding: 50
+        padding: 200
       });
 
       onRouteCalculated();
@@ -220,7 +224,7 @@ const MapContainer = ({
     <div ref={mapContainer} className="absolute inset-0">
       {isSimulating && currentRoute && map.current && (
         <RouteSimulation
-          map={map.current}
+          map={map.current as mapboxgl.Map}
           route={currentRoute}
           speed={speed}
           onSimulationEnd={onSimulationEnd}

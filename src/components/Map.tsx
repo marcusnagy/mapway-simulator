@@ -34,6 +34,10 @@ const Map = ({
     );
   }
 
+  if (!mapboxToken) {
+    return <div>Please enter a Mapbox token</div>;
+  }
+
   return (
     <div className="fixed inset-0">
       <MapContainer
