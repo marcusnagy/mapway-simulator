@@ -46,6 +46,7 @@ const MapContainer = ({
     }
   };
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -66,23 +67,11 @@ const MapContainer = ({
       newMap.on('load', () => {
         console.log('Map loaded successfully');
         setIsMapLoaded(true);
+        map.current = newMap;
         toast({
           title: "Success",
           description: "Map initialized successfully",
         });
-
-        // Add markers if coordinates exist when map loads
-        if (source) {
-          sourceMarker.current = new mapboxgl.Marker({ color: '#FF0000' })
-            .setLngLat([source.lng, source.lat])
-            .addTo(newMap);
-        }
-        
-        if (destination) {
-          destinationMarker.current = new mapboxgl.Marker({ color: '#00FF00' })
-            .setLngLat([destination.lng, destination.lat])
-            .addTo(newMap);
-        }
       });
 
       newMap.on('error', (e) => {
@@ -99,11 +88,9 @@ const MapContainer = ({
         'top-right'
       );
 
-      map.current = newMap;
-
       return () => {
         clearRouteAndMarkers();
-        map.current?.remove();
+        newMap.remove();
         map.current = null;
         setIsMapLoaded(false);
       };
@@ -116,12 +103,16 @@ const MapContainer = ({
       });
       setIsMapLoaded(false);
     }
-  }, [mapboxToken, setIsMapLoaded, toast, source, destination]);
+  }, [mapboxToken, setIsMapLoaded, toast]);
 
+  // Handle marker updates and route calculation
   useEffect(() => {
-    if (!map.current || !map.current.loaded()) return;
+    if (!map.current || !map.current.loaded()) {
+      console.log('Map not ready for updates');
+      return;
+    }
 
-    // Clear existing route and markers when coordinates change
+    console.log('Updating markers and route:', { source, destination });
     clearRouteAndMarkers();
 
     // Update source marker
@@ -153,6 +144,7 @@ const MapContainer = ({
     if (!map.current) return;
 
     try {
+      console.log('Calculating route between:', src, dest);
       const response = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving/${src.lng},${src.lat};${dest.lng},${dest.lat}?geometries=geojson&access_token=${mapboxToken}`
       );
@@ -163,14 +155,7 @@ const MapContainer = ({
         throw new Error('No route found');
       }
 
-      // Clear existing route before adding new one
-      if (map.current.getLayer('route')) {
-        map.current.removeLayer('route');
-      }
-      if (map.current.getSource('route')) {
-        map.current.removeSource('route');
-      }
-
+      // Add the route to the map
       map.current.addSource('route', {
         type: 'geojson',
         data: {
