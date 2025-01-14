@@ -4,7 +4,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Coordinates, RoutePoint, POI } from '@/types/map';
+import { useToast } from "@/components/ui/use-toast";
 
 const POI_ICON = {
   'restaurant': '🍽️',
@@ -20,6 +22,9 @@ const Map = () => {
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
+  const [newPoiName, setNewPoiName] = useState('');
+  const [newPoiType, setNewPoiType] = useState<string>('default');
+  const { toast } = useToast();
 
   const addPOIToMap = (poi: POI) => {
     if (!map.current) return;
@@ -34,6 +39,29 @@ const Map = () => {
       .setLngLat([poi.coordinates.lng, poi.coordinates.lat])
       .setPopup(new mapboxgl.Popup().setHTML(`<h3>${poi.name}</h3>`))
       .addTo(map.current);
+  };
+
+  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+    if (!newPoiName) return;
+
+    const newPoi: POI = {
+      id: Date.now().toString(),
+      name: newPoiName,
+      type: newPoiType,
+      coordinates: {
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat
+      }
+    };
+
+    setPois(prev => [...prev, newPoi]);
+    addPOIToMap(newPoi);
+    setNewPoiName('');
+    
+    toast({
+      title: "POI Added",
+      description: `Added ${newPoi.name} at coordinates (${newPoi.coordinates.lng.toFixed(4)}, ${newPoi.coordinates.lat.toFixed(4)})`,
+    });
   };
 
   const initializeMap = () => {
@@ -54,12 +82,20 @@ const Map = () => {
         'top-right'
       );
 
+      // Add click handler for adding POIs
+      map.current.on('click', handleMapClick);
+
       // Add existing POIs to map
       pois.forEach(poi => addPOIToMap(poi));
 
       setIsMapInitialized(true);
     } catch (error) {
       console.error('Error initializing map:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to initialize map. Please check your Mapbox token.",
+      });
     }
   };
 
@@ -100,8 +136,35 @@ const Map = () => {
   }
 
   return (
-    <div className="relative w-full h-full rounded-lg overflow-hidden">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="space-y-4">
+      <div className="flex gap-4 items-end">
+        <div className="space-y-2 flex-1">
+          <Label htmlFor="poi-name">POI Name</Label>
+          <Input
+            id="poi-name"
+            placeholder="Enter POI name"
+            value={newPoiName}
+            onChange={(e) => setNewPoiName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="poi-type">POI Type</Label>
+          <Select value={newPoiType} onValueChange={setNewPoiType}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default</SelectItem>
+              <SelectItem value="restaurant">Restaurant</SelectItem>
+              <SelectItem value="park">Park</SelectItem>
+              <SelectItem value="shop">Shop</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
+        <div ref={mapContainer} className="absolute inset-0" />
+      </div>
     </div>
   );
 };
