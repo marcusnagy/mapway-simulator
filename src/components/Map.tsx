@@ -51,7 +51,7 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
       .addTo(map.current);
   };
 
-  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+  const handleMapClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
     if (!map.current || !isMapLoaded) return;
 
     const coordinates: Coordinates = {
