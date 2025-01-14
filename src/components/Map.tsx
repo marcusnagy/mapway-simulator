@@ -20,13 +20,14 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
   const [newPoiName, setNewPoiName] = useState('');
   const [newPoiType, setNewPoiType] = useState<string>('default');
   const { toast } = useToast();
 
   const addPOIToMap = (poi: POI) => {
-    if (!map.current) return;
+    if (!map.current || !isMapLoaded) return;
 
     const el = document.createElement('div');
     el.className = 'poi-marker';
@@ -41,7 +42,7 @@ const Map = () => {
   };
 
   const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-    if (!newPoiName) return;
+    if (!newPoiName || !isMapLoaded) return;
 
     const newPoi: POI = {
       id: Date.now().toString(),
@@ -69,22 +70,23 @@ const Map = () => {
           throw new Error('Your browser does not support Mapbox GL');
         }
 
-        map.current = new mapboxgl.Map({
+        const newMap = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/dark-v11',
           center: [-74.5, 40],
           zoom: 9,
         });
 
-        map.current.on('load', () => {
+        newMap.on('load', () => {
           console.log('Map loaded successfully');
+          setIsMapLoaded(true);
           toast({
             title: "Success",
             description: "Map initialized successfully",
           });
         });
 
-        map.current.on('error', (e) => {
+        newMap.on('error', (e) => {
           console.error('Mapbox error:', e);
           toast({
             variant: "destructive",
@@ -93,13 +95,19 @@ const Map = () => {
           });
         });
 
-        map.current.addControl(
+        newMap.addControl(
           new mapboxgl.NavigationControl(),
           'top-right'
         );
 
-        map.current.on('click', handleMapClick);
-        pois.forEach(poi => addPOIToMap(poi));
+        // Only add click handler after map is loaded
+        newMap.on('load', () => {
+          newMap.on('click', handleMapClick);
+          // Add existing POIs after map is loaded
+          pois.forEach(poi => addPOIToMap(poi));
+        });
+
+        map.current = newMap;
 
       } catch (error) {
         console.error('Error initializing map:', error);
@@ -109,16 +117,18 @@ const Map = () => {
           description: error instanceof Error ? error.message : "Failed to initialize map",
         });
         setIsMapInitialized(false);
+        setIsMapLoaded(false);
       }
     }
-  }, [isMapInitialized, mapboxToken]);
 
-  // Cleanup on unmount
-  useEffect(() => {
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+        setIsMapLoaded(false);
+      }
     };
-  }, []);
+  }, [isMapInitialized, mapboxToken]);
 
   if (!isMapInitialized) {
     return (
@@ -127,7 +137,7 @@ const Map = () => {
           <Label htmlFor="mapbox-token" className="text-gray-300">Mapbox Access Token</Label>
           <Input
             id="mapbox-token"
-            placeholder="Enter your Mapbox public access token"
+            placeholder="Enter your Mapbox public access token (pk.*)"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
             className="bg-gray-800 border-gray-700 text-white"
@@ -138,7 +148,7 @@ const Map = () => {
         </div>
         <Button 
           onClick={() => setIsMapInitialized(true)} 
-          disabled={!mapboxToken}
+          disabled={!mapboxToken || !mapboxToken.startsWith('pk.')}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           Initialize Map
@@ -157,11 +167,16 @@ const Map = () => {
             placeholder="Enter POI name"
             value={newPoiName}
             onChange={(e) => setNewPoiName(e.target.value)}
+            disabled={!isMapLoaded}
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="poi-type">POI Type</Label>
-          <Select value={newPoiType} onValueChange={setNewPoiType}>
+          <Select 
+            value={newPoiType} 
+            onValueChange={setNewPoiType}
+            disabled={!isMapLoaded}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -176,6 +191,11 @@ const Map = () => {
       </div>
       <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0" />
+        {!isMapLoaded && isMapInitialized && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+            <div className="text-white">Loading map...</div>
+          </div>
+        )}
       </div>
     </div>
   );
