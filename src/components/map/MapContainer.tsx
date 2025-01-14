@@ -24,6 +24,28 @@ const MapContainer = ({
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
   const { toast } = useToast();
 
+  // Clear existing route and markers
+  const clearRouteAndMarkers = () => {
+    if (map.current) {
+      if (map.current.getLayer('route')) {
+        map.current.removeLayer('route');
+      }
+      if (map.current.getSource('route')) {
+        map.current.removeSource('route');
+      }
+    }
+    
+    if (sourceMarker.current) {
+      sourceMarker.current.remove();
+      sourceMarker.current = null;
+    }
+    
+    if (destinationMarker.current) {
+      destinationMarker.current.remove();
+      destinationMarker.current = null;
+    }
+  };
+
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -67,6 +89,7 @@ const MapContainer = ({
       map.current = newMap;
 
       return () => {
+        clearRouteAndMarkers();
         map.current?.remove();
         map.current = null;
         setIsMapLoaded(false);
@@ -85,9 +108,11 @@ const MapContainer = ({
   useEffect(() => {
     if (!map.current) return;
 
+    // Clear existing route and markers when coordinates change
+    clearRouteAndMarkers();
+
     // Update source marker
     if (source) {
-      if (sourceMarker.current) sourceMarker.current.remove();
       sourceMarker.current = new mapboxgl.Marker({ color: '#FF0000' })
         .setLngLat([source.lng, source.lat])
         .addTo(map.current);
@@ -100,7 +125,6 @@ const MapContainer = ({
 
     // Update destination marker
     if (destination) {
-      if (destinationMarker.current) destinationMarker.current.remove();
       destinationMarker.current = new mapboxgl.Marker({ color: '#00FF00' })
         .setLngLat([destination.lng, destination.lat])
         .addTo(map.current);
@@ -126,6 +150,7 @@ const MapContainer = ({
         throw new Error('No route found');
       }
 
+      // Clear existing route before adding new one
       if (map.current.getLayer('route')) {
         map.current.removeLayer('route');
       }
