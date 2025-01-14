@@ -10,13 +10,18 @@ const Index = () => {
   const [destination, setDestination] = useState("");
   const [speed, setSpeed] = useState("60");
   const [hasRoute, setHasRoute] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
   const [mapSource, setMapSource] = useState<Coordinates | null>(null);
   const [mapDestination, setMapDestination] = useState<Coordinates | null>(null);
 
   const handleSimulate = () => {
     if (!mapSource || !mapDestination) return;
     console.log("Simulating route with speed:", speed);
-    // Simulation logic will be implemented here
+    setIsSimulating(true);
+  };
+
+  const handleSimulationEnd = () => {
+    setIsSimulating(false);
   };
 
   const handleReset = () => {
@@ -24,6 +29,7 @@ const Index = () => {
     setDestination("");
     setSpeed("60");
     setHasRoute(false);
+    setIsSimulating(false);
     setMapSource(null);
     setMapDestination(null);
   };
@@ -49,7 +55,10 @@ const Index = () => {
       <Map 
         source={mapSource}
         destination={mapDestination}
+        speed={Number(speed)}
+        isSimulating={isSimulating}
         onRouteCalculated={() => setHasRoute(true)}
+        onSimulationEnd={handleSimulationEnd}
       />
       
       {/* Floating Controls Overlay */}
@@ -86,6 +95,7 @@ const Index = () => {
             min="1"
             max="200"
             className="bg-gray-900/50 border-gray-700 text-white"
+            disabled={isSimulating}
           />
         </div>
       </div>
@@ -96,6 +106,7 @@ const Index = () => {
           onClick={handleReset}
           variant="outline"
           className="bg-red-500/50 hover:bg-red-600/50 text-white border-none"
+          disabled={isSimulating}
         >
           Reset
         </Button>
@@ -103,7 +114,7 @@ const Index = () => {
         <Button 
           onClick={handleCalculateRoute}
           className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
-          disabled={!source || !destination}
+          disabled={!source || !destination || isSimulating}
         >
           Calculate Route
         </Button>
@@ -112,8 +123,9 @@ const Index = () => {
           <Button 
             onClick={handleSimulate}
             className="bg-green-500/50 hover:bg-green-600/50 text-white"
+            disabled={isSimulating}
           >
-            Simulate
+            {isSimulating ? 'Simulating...' : 'Simulate'}
           </Button>
         )}
       </div>

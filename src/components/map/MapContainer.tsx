@@ -1,27 +1,34 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { Coordinates } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
+import RouteSimulation from './RouteSimulation';
 
 interface MapContainerProps {
   mapboxToken: string;
   source: Coordinates | null;
   destination: Coordinates | null;
+  speed: number;
+  isSimulating: boolean;
   onRouteCalculated: () => void;
-  setIsMapLoaded: (loaded: boolean) => void;
+  onSimulationEnd: () => void;
 }
 
 const MapContainer = ({ 
   mapboxToken, 
   source, 
-  destination, 
+  destination,
+  speed,
+  isSimulating,
   onRouteCalculated,
+  onSimulationEnd,
   setIsMapLoaded 
 }: MapContainerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
+  const [currentRoute, setCurrentRoute] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const { toast } = useToast();
 
   // Clear existing route and markers
@@ -155,14 +162,16 @@ const MapContainer = ({
         throw new Error('No route found');
       }
 
+      const routeFeature = {
+        type: 'Feature',
+        properties: {},
+        geometry: data.routes[0].geometry
+      } as GeoJSON.Feature<GeoJSON.LineString>;
+
       // Add the route to the map
       map.current.addSource('route', {
         type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: data.routes[0].geometry
-        }
+        data: routeFeature
       });
 
       map.current.addLayer({
@@ -179,6 +188,8 @@ const MapContainer = ({
           'line-opacity': 0.75
         }
       });
+
+      setCurrentRoute(routeFeature);
 
       const coordinates = data.routes[0].geometry.coordinates;
       const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
@@ -205,7 +216,16 @@ const MapContainer = ({
   };
 
   return (
-    <div ref={mapContainer} className="absolute inset-0" />
+    <div ref={mapContainer} className="absolute inset-0">
+      {isSimulating && currentRoute && map.current && (
+        <RouteSimulation
+          map={map.current}
+          route={currentRoute}
+          speed={speed}
+          onSimulationEnd={onSimulationEnd}
+        />
+      )}
+    </div>
   );
 };
 
