@@ -21,49 +21,65 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-black p-4">
       <div className="container mx-auto space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="source">Source Location</Label>
-              <Input
-                id="source"
-                placeholder="Enter source location"
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="destination">Destination</Label>
-              <Input
-                id="destination"
-                placeholder="Enter destination"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="speed">Speed (km/h)</Label>
-              <Input
-                id="speed"
-                type="number"
-                value={speed}
-                onChange={(e) => setSpeed(e.target.value)}
-                min="1"
-                max="200"
-              />
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-6">
+            <div className="flex gap-6 items-end">
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="source" className="text-gray-300">Source Location</Label>
+                <Input
+                  id="source"
+                  placeholder="Enter source location"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="glow-input bg-gray-900 border-gray-700 text-white"
+                />
+              </div>
+              
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="destination" className="text-gray-300">Destination</Label>
+                <Input
+                  id="destination"
+                  placeholder="Enter destination"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  className="glow-input bg-gray-900 border-gray-700 text-white"
+                />
+              </div>
+              
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="speed" className="text-gray-300">Speed (km/h)</Label>
+                <Input
+                  id="speed"
+                  type="number"
+                  value={speed}
+                  onChange={(e) => setSpeed(e.target.value)}
+                  min="1"
+                  max="200"
+                  className="glow-input bg-gray-900 border-gray-700 text-white"
+                />
+              </div>
             </div>
 
-            <div className="space-x-4">
-              <Button onClick={handleSimulate}>Start Simulation</Button>
-              <Button variant="outline" onClick={handleReset}>Reset</Button>
+            <div className="flex justify-end space-x-4">
+              <Button 
+                onClick={handleSimulate}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Start Simulation
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleReset}
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              >
+                Reset
+              </Button>
             </div>
           </div>
           
-          <div className="col-span-1 md:col-span-2 h-[600px]">
+          <div className="h-[600px]">
             <Map />
           </div>
         </div>

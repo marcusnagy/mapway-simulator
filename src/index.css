@@ -100,6 +100,25 @@
   }
 }
 
+@layer components {
+  .glow-input {
+    @apply relative;
+    animation: glow 2s linear infinite;
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px #4f46e5, 0 0 10px #4f46e5, 0 0 15px #4f46e5;
+  }
+  50% {
+    box-shadow: 0 0 10px #818cf8, 0 0 20px #818cf8, 0 0 30px #818cf8;
+  }
+  100% {
+    box-shadow: 0 0 5px #4f46e5, 0 0 10px #4f46e5, 0 0 15px #4f46e5;
+  }
+}
+
 .poi-marker {
   display: flex;
   align-items: center;
