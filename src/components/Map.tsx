@@ -65,12 +65,34 @@ const Map = () => {
   };
 
   const initializeMap = () => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) {
+      console.error('Map container not found');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Map container not found",
+      });
+      return;
+    }
+
+    if (!mapboxToken) {
+      console.error('Mapbox token is required');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a Mapbox token",
+      });
+      return;
+    }
 
     try {
+      console.log('Starting map initialization...');
       mapboxgl.accessToken = mapboxToken;
-      console.log('Initializing map with token:', mapboxToken);
       
+      if (!mapboxgl.supported()) {
+        throw new Error('Your browser does not support Mapbox GL');
+      }
+
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/dark-v11',
@@ -83,6 +105,15 @@ const Map = () => {
         toast({
           title: "Map Initialized",
           description: "Map has been loaded successfully",
+        });
+      });
+
+      map.current.on('error', (e) => {
+        console.error('Mapbox error:', e);
+        toast({
+          variant: "destructive",
+          title: "Map Error",
+          description: e.error.message || "An error occurred with the map",
         });
       });
 
@@ -100,7 +131,7 @@ const Map = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to initialize map. Please check your Mapbox token.",
+        description: error instanceof Error ? error.message : "Failed to initialize map. Please check your Mapbox token.",
       });
     }
   };
