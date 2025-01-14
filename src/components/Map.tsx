@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { Coordinates } from '@/types/map';
 import MapTokenInput from './map/MapTokenInput';
-import RouteControls from './map/RouteControls';
 import MapContainer from './map/MapContainer';
 
 interface MapProps {
   source: Coordinates | null;
   destination: Coordinates | null;
+  speed: number;
+  isSimulating: boolean;
   onRouteCalculated: () => void;
+  onSimulationEnd: () => void;
 }
 
-const Map = ({ source, destination, onRouteCalculated }: MapProps) => {
+const Map = ({ 
+  source, 
+  destination, 
+  speed,
+  isSimulating,
+  onRouteCalculated,
+  onSimulationEnd 
+}: MapProps) => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -31,7 +40,10 @@ const Map = ({ source, destination, onRouteCalculated }: MapProps) => {
         mapboxToken={mapboxToken}
         source={source}
         destination={destination}
+        speed={speed}
+        isSimulating={isSimulating}
         onRouteCalculated={onRouteCalculated}
+        onSimulationEnd={onSimulationEnd}
         setIsMapLoaded={setIsMapLoaded}
       />
     </div>

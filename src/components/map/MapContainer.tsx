@@ -12,6 +12,7 @@ interface MapContainerProps {
   isSimulating: boolean;
   onRouteCalculated: () => void;
   onSimulationEnd: () => void;
+  setIsMapLoaded: (loaded: boolean) => void;
 }
 
 const MapContainer = ({ 
