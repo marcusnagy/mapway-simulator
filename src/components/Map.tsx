@@ -21,7 +21,6 @@ const Map = () => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [pois, setPois] = useState<POI[]>([]);
-  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [newPoiName, setNewPoiName] = useState('');
   const [newPoiType, setNewPoiType] = useState<string>('default');
   const { toast } = useToast();
@@ -57,91 +56,62 @@ const Map = () => {
     setPois(prev => [...prev, newPoi]);
     addPOIToMap(newPoi);
     setNewPoiName('');
-    
-    toast({
-      title: "POI Added",
-      description: `Added ${newPoi.name} at coordinates (${newPoi.coordinates.lng.toFixed(4)}, ${newPoi.coordinates.lat.toFixed(4)})`,
-    });
   };
 
-  const initializeMap = () => {
-    if (!mapContainer.current) {
-      console.error('Map container not found');
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Map container not found",
-      });
-      return;
-    }
-
-    if (!mapboxToken) {
-      console.error('Mapbox token is required');
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter a Mapbox token",
-      });
-      return;
-    }
-
-    try {
-      console.log('Starting map initialization...');
-      mapboxgl.accessToken = mapboxToken;
+  useEffect(() => {
+    if (isMapInitialized && mapContainer.current && mapboxToken && !map.current) {
+      console.log('Initializing map with container and token...');
       
-      if (!mapboxgl.supported()) {
-        throw new Error('Your browser does not support Mapbox GL');
-      }
+      try {
+        mapboxgl.accessToken = mapboxToken;
+        
+        if (!mapboxgl.supported()) {
+          throw new Error('Your browser does not support Mapbox GL');
+        }
 
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center: [-74.5, 40],
-        zoom: 9,
-      });
-
-      map.current.on('load', () => {
-        console.log('Map loaded successfully');
-        toast({
-          title: "Map Initialized",
-          description: "Map has been loaded successfully",
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/dark-v11',
+          center: [-74.5, 40],
+          zoom: 9,
         });
-      });
 
-      map.current.on('error', (e) => {
-        console.error('Mapbox error:', e);
+        map.current.on('load', () => {
+          console.log('Map loaded successfully');
+          toast({
+            title: "Success",
+            description: "Map initialized successfully",
+          });
+        });
+
+        map.current.on('error', (e) => {
+          console.error('Mapbox error:', e);
+          toast({
+            variant: "destructive",
+            title: "Map Error",
+            description: e.error.message || "An error occurred with the map",
+          });
+        });
+
+        map.current.addControl(
+          new mapboxgl.NavigationControl(),
+          'top-right'
+        );
+
+        map.current.on('click', handleMapClick);
+        pois.forEach(poi => addPOIToMap(poi));
+
+      } catch (error) {
+        console.error('Error initializing map:', error);
         toast({
           variant: "destructive",
-          title: "Map Error",
-          description: e.error.message || "An error occurred with the map",
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to initialize map",
         });
-      });
-
-      map.current.addControl(
-        new mapboxgl.NavigationControl(),
-        'top-right'
-      );
-
-      map.current.on('click', handleMapClick);
-      pois.forEach(poi => addPOIToMap(poi));
-
-      setIsMapInitialized(true);
-    } catch (error) {
-      console.error('Error initializing map:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to initialize map. Please check your Mapbox token.",
-      });
+        setIsMapInitialized(false);
+      }
     }
-  };
-
-  // Add new POI when they're added to the state
-  useEffect(() => {
-    if (map.current) {
-      pois.forEach(poi => addPOIToMap(poi));
-    }
-  }, [pois]);
+  }, [isMapInitialized, mapboxToken]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -160,14 +130,14 @@ const Map = () => {
             placeholder="Enter your Mapbox public access token"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
-            className="glow-input bg-gray-800 border-gray-700 text-white"
+            className="bg-gray-800 border-gray-700 text-white"
           />
           <p className="text-sm text-gray-400">
             Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Mapbox Dashboard</a>
           </p>
         </div>
         <Button 
-          onClick={initializeMap} 
+          onClick={() => setIsMapInitialized(true)} 
           disabled={!mapboxToken}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
