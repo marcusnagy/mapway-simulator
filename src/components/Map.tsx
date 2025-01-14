@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Coordinates, RoutePoint, POI } from '@/types/map';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const POI_ICON = {
   'restaurant': '🍽️',
@@ -15,7 +15,13 @@ const POI_ICON = {
   'default': '📍'
 };
 
-const Map = () => {
+interface MapProps {
+  onSourceSet: (coords: Coordinates) => void;
+  onDestinationSet: (coords: Coordinates) => void;
+  onRouteCalculated: () => void;
+}
+
+const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState('');
@@ -45,7 +51,7 @@ const Map = () => {
       .addTo(map.current);
   };
 
-  const handleMapClick = async (e: mapboxgl.MapMouseEvent) => {
+  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     if (!map.current || !isMapLoaded) return;
 
     const coordinates: Coordinates = {
@@ -61,21 +67,24 @@ const Map = () => {
         .addTo(map.current);
       setSourceMarker(newMarker);
       setSource(coordinates);
+      onSourceSet(coordinates);
       toast({
         title: "Source set",
         description: "Click on the map to set destination",
       });
     } else if (!destination) {
-      // Set destination marker and calculate route
+      // Set destination marker
       if (destinationMarker) destinationMarker.remove();
       const newMarker = new mapboxgl.Marker({ color: '#00FF00' })
         .setLngLat([coordinates.lng, coordinates.lat])
         .addTo(map.current);
       setDestinationMarker(newMarker);
       setDestination(coordinates);
-      
-      // Calculate and display route
-      await calculateRoute(source, coordinates);
+      onDestinationSet(coordinates);
+      toast({
+        title: "Destination set",
+        description: "Click Calculate Route to see the path",
+      });
     }
 
     // Handle POI creation if name is set
@@ -93,12 +102,12 @@ const Map = () => {
     }
   };
 
-  const calculateRoute = async (start: Coordinates, end: Coordinates) => {
-    if (!map.current) return;
+  const calculateRoute = async () => {
+    if (!map.current || !source || !destination) return;
 
     try {
       const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxToken}`
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${source.lng},${source.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${mapboxToken}`
       );
 
       const data = await response.json();
@@ -150,6 +159,7 @@ const Map = () => {
         padding: 50
       });
 
+      onRouteCalculated();
       toast({
         title: "Success",
         description: "Route calculated successfully",
@@ -293,6 +303,14 @@ const Map = () => {
             </SelectContent>
           </Select>
         </div>
+        {source && destination && (
+          <Button 
+            onClick={calculateRoute}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Calculate Route
+          </Button>
+        )}
       </div>
       <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
         <div ref={mapContainer} className="absolute inset-0" />

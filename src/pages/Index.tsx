@@ -3,14 +3,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Map from "@/components/Map";
 import { useState } from "react";
+import { Coordinates } from "@/types/map";
 
 const Index = () => {
   const [source, setSource] = useState("");
   const [destination, setDestination] = useState("");
   const [speed, setSpeed] = useState("60");
+  const [hasRoute, setHasRoute] = useState(false);
+  const [mapSource, setMapSource] = useState<Coordinates | null>(null);
+  const [mapDestination, setMapDestination] = useState<Coordinates | null>(null);
 
   const handleSimulate = () => {
-    // Will implement simulation logic later
     console.log("Simulating route with speed:", speed);
   };
 
@@ -18,6 +21,13 @@ const Index = () => {
     setSource("");
     setDestination("");
     setSpeed("60");
+    setHasRoute(false);
+    setMapSource(null);
+    setMapDestination(null);
+  };
+
+  const handleRouteCalculated = () => {
+    setHasRoute(true);
   };
 
   return (
@@ -66,6 +76,7 @@ const Index = () => {
               <Button 
                 onClick={handleSimulate}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!hasRoute}
               >
                 Start Simulation
               </Button>
@@ -80,7 +91,11 @@ const Index = () => {
           </div>
           
           <div className="h-[600px]">
-            <Map />
+            <Map 
+              onSourceSet={setMapSource}
+              onDestinationSet={setMapDestination}
+              onRouteCalculated={handleRouteCalculated}
+            />
           </div>
         </div>
       </div>
