@@ -51,7 +51,7 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
       .addTo(map.current);
   };
 
-  const handleMapClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
     if (!map.current || !isMapLoaded) return;
 
     const coordinates: Coordinates = {
@@ -60,7 +60,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
     };
 
     if (!source) {
-      // Set source marker
       if (sourceMarker) sourceMarker.remove();
       const newMarker = new mapboxgl.Marker({ color: '#FF0000' })
         .setLngLat([coordinates.lng, coordinates.lat])
@@ -73,7 +72,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
         description: "Click on the map to set destination",
       });
     } else if (!destination) {
-      // Set destination marker
       if (destinationMarker) destinationMarker.remove();
       const newMarker = new mapboxgl.Marker({ color: '#00FF00' })
         .setLngLat([coordinates.lng, coordinates.lat])
@@ -87,7 +85,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
       });
     }
 
-    // Handle POI creation if name is set
     if (newPoiName) {
       const newPoi: POI = {
         id: Date.now().toString(),
@@ -116,7 +113,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
         throw new Error('No route found');
       }
 
-      // Remove existing route layer if it exists
       if (map.current.getLayer('route')) {
         map.current.removeLayer('route');
       }
@@ -124,7 +120,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
         map.current.removeSource('route');
       }
 
-      // Add the route to the map
       map.current.addSource('route', {
         type: 'geojson',
         data: {
@@ -149,7 +144,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
         }
       });
 
-      // Fit the map to the route
       const coordinates = data.routes[0].geometry.coordinates;
       const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
         return bounds.extend([coord[0], coord[1]]);
@@ -176,8 +170,6 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
 
   useEffect(() => {
     if (isMapInitialized && mapContainer.current && mapboxToken && !map.current) {
-      console.log('Initializing map with container and token...');
-      
       try {
         mapboxgl.accessToken = mapboxToken;
         
@@ -215,12 +207,7 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
           'top-right'
         );
 
-        // Only add click handler after map is loaded
-        newMap.on('load', () => {
-          newMap.on('click', handleMapClick);
-          // Add existing POIs after map is loaded
-          pois.forEach(poi => addPOIToMap(poi));
-        });
+        newMap.on('click', handleMapClick);
 
         map.current = newMap;
 
@@ -247,52 +234,56 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
 
   if (!isMapInitialized) {
     return (
-      <div className="p-4 space-y-4 border border-gray-700 rounded-lg bg-gray-900">
-        <div className="space-y-2">
-          <Label htmlFor="mapbox-token" className="text-gray-300">Mapbox Access Token</Label>
-          <Input
-            id="mapbox-token"
-            placeholder="Enter your Mapbox public access token (pk.*)"
-            value={mapboxToken}
-            onChange={(e) => setMapboxToken(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-white"
-          />
-          <p className="text-sm text-gray-400">
-            Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Mapbox Dashboard</a>
-          </p>
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm">
+        <div className="p-6 space-y-4 bg-gray-900 rounded-lg border border-gray-700 max-w-md w-full mx-4">
+          <div className="space-y-2">
+            <Label htmlFor="mapbox-token" className="text-gray-300">Mapbox Access Token</Label>
+            <Input
+              id="mapbox-token"
+              placeholder="Enter your Mapbox public access token (pk.*)"
+              value={mapboxToken}
+              onChange={(e) => setMapboxToken(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+            <p className="text-sm text-gray-400">
+              Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Mapbox Dashboard</a>
+            </p>
+          </div>
+          <Button 
+            onClick={() => setIsMapInitialized(true)} 
+            disabled={!mapboxToken || !mapboxToken.startsWith('pk.')}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Initialize Map
+          </Button>
         </div>
-        <Button 
-          onClick={() => setIsMapInitialized(true)} 
-          disabled={!mapboxToken || !mapboxToken.startsWith('pk.')}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          Initialize Map
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-4 items-end">
-        <div className="space-y-2 flex-1">
-          <Label htmlFor="poi-name">POI Name</Label>
+    <div className="fixed inset-0">
+      <div ref={mapContainer} className="absolute inset-0" />
+      <div className="absolute top-4 left-4 right-4 flex flex-wrap gap-4 p-4 bg-gray-900/80 backdrop-blur-sm rounded-lg">
+        <div className="space-y-2 flex-1 min-w-[200px]">
+          <Label htmlFor="poi-name" className="text-white">POI Name</Label>
           <Input
             id="poi-name"
             placeholder="Enter POI name"
             value={newPoiName}
             onChange={(e) => setNewPoiName(e.target.value)}
             disabled={!isMapLoaded}
+            className="bg-gray-800 border-gray-700 text-white"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="poi-type">POI Type</Label>
+          <Label htmlFor="poi-type" className="text-white">POI Type</Label>
           <Select 
             value={newPoiType} 
             onValueChange={setNewPoiType}
             disabled={!isMapLoaded}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] bg-gray-800 border-gray-700 text-white">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -306,20 +297,17 @@ const Map = ({ onSourceSet, onDestinationSet, onRouteCalculated }: MapProps) => 
         {source && destination && (
           <Button 
             onClick={calculateRoute}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white self-end"
           >
             Calculate Route
           </Button>
         )}
       </div>
-      <div className="relative w-full h-[600px] rounded-lg overflow-hidden">
-        <div ref={mapContainer} className="absolute inset-0" />
-        {!isMapLoaded && isMapInitialized && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
-            <div className="text-white">Loading map...</div>
-          </div>
-        )}
-      </div>
+      {!isMapLoaded && isMapInitialized && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+          <div className="text-white">Loading map...</div>
+        </div>
+      )}
     </div>
   );
 };
