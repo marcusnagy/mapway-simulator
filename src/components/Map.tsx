@@ -69,6 +69,7 @@ const Map = () => {
 
     try {
       mapboxgl.accessToken = mapboxToken;
+      console.log('Initializing map with token:', mapboxToken);
       
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -77,15 +78,20 @@ const Map = () => {
         zoom: 9,
       });
 
+      map.current.on('load', () => {
+        console.log('Map loaded successfully');
+        toast({
+          title: "Map Initialized",
+          description: "Map has been loaded successfully",
+        });
+      });
+
       map.current.addControl(
         new mapboxgl.NavigationControl(),
         'top-right'
       );
 
-      // Add click handler for adding POIs
       map.current.on('click', handleMapClick);
-
-      // Add existing POIs to map
       pois.forEach(poi => addPOIToMap(poi));
 
       setIsMapInitialized(true);
@@ -115,20 +121,25 @@ const Map = () => {
 
   if (!isMapInitialized) {
     return (
-      <div className="p-4 space-y-4 border rounded-lg">
+      <div className="p-4 space-y-4 border border-gray-700 rounded-lg bg-gray-900">
         <div className="space-y-2">
-          <Label htmlFor="mapbox-token">Mapbox Access Token</Label>
+          <Label htmlFor="mapbox-token" className="text-gray-300">Mapbox Access Token</Label>
           <Input
             id="mapbox-token"
             placeholder="Enter your Mapbox public access token"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
+            className="glow-input bg-gray-800 border-gray-700 text-white"
           />
-          <p className="text-sm text-muted-foreground">
-            Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Mapbox Dashboard</a>
+          <p className="text-sm text-gray-400">
+            Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Mapbox Dashboard</a>
           </p>
         </div>
-        <Button onClick={initializeMap} disabled={!mapboxToken}>
+        <Button 
+          onClick={initializeMap} 
+          disabled={!mapboxToken}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
           Initialize Map
         </Button>
       </div>
