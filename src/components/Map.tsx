@@ -24,6 +24,10 @@ const Map = () => {
   const [pois, setPois] = useState<POI[]>([]);
   const [newPoiName, setNewPoiName] = useState('');
   const [newPoiType, setNewPoiType] = useState<string>('default');
+  const [sourceMarker, setSourceMarker] = useState<mapboxgl.Marker | null>(null);
+  const [destinationMarker, setDestinationMarker] = useState<mapboxgl.Marker | null>(null);
+  const [source, setSource] = useState<Coordinates | null>(null);
+  const [destination, setDestination] = useState<Coordinates | null>(null);
   const { toast } = useToast();
 
   const addPOIToMap = (poi: POI) => {
@@ -41,22 +45,123 @@ const Map = () => {
       .addTo(map.current);
   };
 
-  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
-    if (!newPoiName || !isMapLoaded) return;
+  const handleMapClick = async (e: mapboxgl.MapMouseEvent) => {
+    if (!map.current || !isMapLoaded) return;
 
-    const newPoi: POI = {
-      id: Date.now().toString(),
-      name: newPoiName,
-      type: newPoiType,
-      coordinates: {
-        lng: e.lngLat.lng,
-        lat: e.lngLat.lat
-      }
+    const coordinates: Coordinates = {
+      lng: e.lngLat.lng,
+      lat: e.lngLat.lat
     };
 
-    setPois(prev => [...prev, newPoi]);
-    addPOIToMap(newPoi);
-    setNewPoiName('');
+    if (!source) {
+      // Set source marker
+      if (sourceMarker) sourceMarker.remove();
+      const newMarker = new mapboxgl.Marker({ color: '#FF0000' })
+        .setLngLat([coordinates.lng, coordinates.lat])
+        .addTo(map.current);
+      setSourceMarker(newMarker);
+      setSource(coordinates);
+      toast({
+        title: "Source set",
+        description: "Click on the map to set destination",
+      });
+    } else if (!destination) {
+      // Set destination marker and calculate route
+      if (destinationMarker) destinationMarker.remove();
+      const newMarker = new mapboxgl.Marker({ color: '#00FF00' })
+        .setLngLat([coordinates.lng, coordinates.lat])
+        .addTo(map.current);
+      setDestinationMarker(newMarker);
+      setDestination(coordinates);
+      
+      // Calculate and display route
+      await calculateRoute(source, coordinates);
+    }
+
+    // Handle POI creation if name is set
+    if (newPoiName) {
+      const newPoi: POI = {
+        id: Date.now().toString(),
+        name: newPoiName,
+        type: newPoiType,
+        coordinates
+      };
+
+      setPois(prev => [...prev, newPoi]);
+      addPOIToMap(newPoi);
+      setNewPoiName('');
+    }
+  };
+
+  const calculateRoute = async (start: Coordinates, end: Coordinates) => {
+    if (!map.current) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxToken}`
+      );
+
+      const data = await response.json();
+
+      if (!data.routes?.[0]) {
+        throw new Error('No route found');
+      }
+
+      // Remove existing route layer if it exists
+      if (map.current.getLayer('route')) {
+        map.current.removeLayer('route');
+      }
+      if (map.current.getSource('route')) {
+        map.current.removeSource('route');
+      }
+
+      // Add the route to the map
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: data.routes[0].geometry
+        }
+      });
+
+      map.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#3887be',
+          'line-width': 5,
+          'line-opacity': 0.75
+        }
+      });
+
+      // Fit the map to the route
+      const coordinates = data.routes[0].geometry.coordinates;
+      const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
+        return bounds.extend([coord[0], coord[1]]);
+      }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+      map.current.fitBounds(bounds, {
+        padding: 50
+      });
+
+      toast({
+        title: "Success",
+        description: "Route calculated successfully",
+      });
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to calculate route",
+      });
+    }
   };
 
   useEffect(() => {
