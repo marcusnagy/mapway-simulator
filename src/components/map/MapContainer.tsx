@@ -70,6 +70,19 @@ const MapContainer = ({
           title: "Success",
           description: "Map initialized successfully",
         });
+
+        // Add markers if coordinates exist when map loads
+        if (source) {
+          sourceMarker.current = new mapboxgl.Marker({ color: '#FF0000' })
+            .setLngLat([source.lng, source.lat])
+            .addTo(newMap);
+        }
+        
+        if (destination) {
+          destinationMarker.current = new mapboxgl.Marker({ color: '#00FF00' })
+            .setLngLat([destination.lng, destination.lat])
+            .addTo(newMap);
+        }
       });
 
       newMap.on('error', (e) => {
@@ -103,10 +116,10 @@ const MapContainer = ({
       });
       setIsMapLoaded(false);
     }
-  }, [mapboxToken, setIsMapLoaded, toast]);
+  }, [mapboxToken, setIsMapLoaded, toast, source, destination]);
 
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !map.current.loaded()) return;
 
     // Clear existing route and markers when coordinates change
     clearRouteAndMarkers();
