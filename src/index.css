@@ -99,3 +99,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+.poi-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.poi-marker:hover {
+  transform: scale(1.2);
+}
