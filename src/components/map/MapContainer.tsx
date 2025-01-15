@@ -11,6 +11,7 @@ interface MapContainerProps {
   destination: Coordinates | null;
   speed: number;
   isSimulating: boolean;
+  isCanceled: boolean;
   onRouteCalculated: () => void;
   onSimulationEnd: () => void;
   setIsMapLoaded: (loaded: boolean) => void;
@@ -22,6 +23,7 @@ const MapContainer = ({
   destination,
   speed,
   isSimulating,
+  isCanceled,
   onRouteCalculated,
   onSimulationEnd,
   setIsMapLoaded 
@@ -194,7 +196,13 @@ const MapContainer = ({
       },
     });
 
-      // setCurrentRoute(routeFeature);
+      setCurrentRoute(
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: route,
+        }
+      );
 
       const coordinates = data.routes[0].geometry.coordinates;
       const bounds = coordinates.reduce((bounds: mapboxgl.LngLatBounds, coord: number[]) => {
@@ -228,6 +236,7 @@ const MapContainer = ({
           route={currentRoute}
           speed={speed}
           onSimulationEnd={onSimulationEnd}
+          isCanceled={isCanceled}
         />
       )}
     </div>

@@ -8,6 +8,7 @@ interface MapProps {
   destination: Coordinates | null;
   speed: number;
   isSimulating: boolean;
+  isCanceled: boolean;
   onRouteCalculated: () => void;
   onSimulationEnd: () => void;
 }
@@ -17,6 +18,7 @@ const Map = ({
   destination, 
   speed,
   isSimulating,
+  isCanceled,
   onRouteCalculated,
   onSimulationEnd 
 }: MapProps) => {
@@ -46,6 +48,7 @@ const Map = ({
         destination={destination}
         speed={speed}
         isSimulating={isSimulating}
+        isCanceled={isCanceled}
         onRouteCalculated={onRouteCalculated}
         onSimulationEnd={onSimulationEnd}
         setIsMapLoaded={setIsMapLoaded}

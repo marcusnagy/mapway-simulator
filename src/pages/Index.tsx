@@ -13,6 +13,7 @@ const Index = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [mapSource, setMapSource] = useState<Coordinates | null>(null);
   const [mapDestination, setMapDestination] = useState<Coordinates | null>(null);
+  const [isCanceled, setIsCanceled] = useState(false);
 
   const handleSimulate = () => {
     if (!mapSource || !mapDestination) return;
@@ -22,6 +23,7 @@ const Index = () => {
 
   const handleSimulationEnd = () => {
     setIsSimulating(false);
+    setIsCanceled(false);
   };
 
   const handleReset = () => {
@@ -50,6 +52,10 @@ const Index = () => {
     setMapDestination({ lng: destLng, lat: destLat });
   };
 
+  const handleCancel = () => {
+    setIsCanceled(true);
+  }
+
   return (
     <div className="min-h-screen relative">
       <Map 
@@ -57,6 +63,7 @@ const Index = () => {
         destination={mapDestination}
         speed={Number(speed)}
         isSimulating={isSimulating}
+        isCanceled={isCanceled}
         onRouteCalculated={() => setHasRoute(true)}
         onSimulationEnd={handleSimulationEnd}
       />
@@ -126,6 +133,15 @@ const Index = () => {
             disabled={isSimulating}
           >
             {isSimulating ? 'Simulating...' : 'Simulate'}
+          </Button>
+        )}
+
+        {isSimulating && hasRoute && (
+          <Button
+            onClick={handleCancel}  
+            className="bg-red-500/50 hover:bg-red-600/50 text-white"
+          >
+            Cancel
           </Button>
         )}
       </div>
