@@ -16,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-
 export const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
   const fullStars = Math.floor(rating);
   const halfStar = rating % 1 >= 0.5;
@@ -43,7 +42,7 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
       opts={{
         align: "start",
       }}
-      className="w-full max-w-sm"
+      className="w-full max-w-[250px]"
     >
       <CarouselContent>
         {days.map((day) => {
@@ -55,30 +54,30 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
           return (
             <CarouselItem key={day} className="basis-full">
               <div className="p-1">
-              <Card className="p-4 bg-black text-white">
-                <CardHeader>
-                  <CardTitle>{day}</CardTitle>
-                  <CardDescription>Occupancy percentage throughout the day</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={dayData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="occupancy percent" stroke="#8884d8" fill="#8884d8" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+                <Card className="p-2 bg-black text-white">
+                  <CardHeader className="p-2">
+                    <CardTitle className="text-sm">{day}</CardTitle>
+                    <CardDescription className="text-xs">Occupancy %</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    <ResponsiveContainer width="100%" height={120}>
+                      <AreaChart data={dayData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="occupancyPercent" stroke="#8884d8" fill="#8884d8" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
               </div>
             </CarouselItem>
           );
         })}
       </CarouselContent>
-      <CarouselPrevious />
-      <CarouselNext />
+      <CarouselPrevious className="h-6 w-6 -left-8" />
+      <CarouselNext className="h-6 w-6 -right-8" />
     </Carousel>
   );
 };

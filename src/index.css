@@ -146,4 +146,9 @@
 
 .poi-marker:hover {
   transform: scale(1.2);
+  z-index: 9999 !important;
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 99999 !important;
 }
