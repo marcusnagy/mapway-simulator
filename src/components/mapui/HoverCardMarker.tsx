@@ -23,8 +23,10 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
           style={{
             width: "40px",
             height: "40px",
-            borderRadius: "50%",
+            padding: 0,
+            borderRadius: "9999px", // Ensures perfect circle
             backgroundSize: "cover",
+            backgroundPosition: "center",
             cursor: "pointer",
             backgroundColor: "transparent",
             backgroundImage: poi.imageUrl

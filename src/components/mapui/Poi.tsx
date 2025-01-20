@@ -52,6 +52,7 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
     <Carousel
       opts={{
         align: "start",
+        loop: true, // Enable circular navigation
       }}
       className="w-full"
     >
