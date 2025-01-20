@@ -14,6 +14,7 @@ interface RouteControlsProps {
   onCalculateRoute: () => void;
   onSimulate: () => void;
   onReset: () => void;
+  children?: React.ReactNode;
 }
 
 const RouteControls = ({

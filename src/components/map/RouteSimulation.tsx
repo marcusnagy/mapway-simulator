@@ -9,6 +9,7 @@ interface RouteSimulationProps {
   speed: number; // km/h
   onSimulationEnd: () => void;
   isCanceled: boolean;
+  children?: React.ReactNode;
 }
 
 const RouteSimulation = ({

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import Map from "@/components/Map";
 import { useState } from "react";
 import { Coordinates } from "@/types/map";
+import { ShinyText } from "@/components/mapui/ShinyText";
 
 const Index = () => {
   const [source, setSource] = useState("");
@@ -14,6 +15,7 @@ const Index = () => {
   const [mapSource, setMapSource] = useState<Coordinates | null>(null);
   const [mapDestination, setMapDestination] = useState<Coordinates | null>(null);
   const [isCanceled, setIsCanceled] = useState(false);
+  const [routeStatus, setRouteStatus] = useState<"idle" | "crawling" | "querying" | "done">("idle")
 
   const handleSimulate = () => {
     if (!mapSource || !mapDestination) return;
@@ -30,6 +32,7 @@ const Index = () => {
     setSource("");
     setDestination("");
     setSpeed("60");
+    setRouteStatus("idle");
     setHasRoute(false);
     setIsSimulating(false);
     setMapSource(null);
@@ -48,6 +51,7 @@ const Index = () => {
       return;
     }
 
+    setRouteStatus("crawling");
     setMapSource({ lng: sourceLng, lat: sourceLat });
     setMapDestination({ lng: destLng, lat: destLat });
   };
@@ -64,6 +68,9 @@ const Index = () => {
         speed={Number(speed)}
         isSimulating={isSimulating}
         isCanceled={isCanceled}
+        setRouteStatus={setRouteStatus}
+        setSource={setSource}
+        setMapSource={setMapSource}
         onRouteCalculated={() => setHasRoute(true)}
         onSimulationEnd={handleSimulationEnd}
       />
@@ -109,6 +116,24 @@ const Index = () => {
 
       {/* Bottom Right Controls */}
       <div className="absolute bottom-4 right-4 space-x-4">
+        {routeStatus === "crawling" && (
+          <ShinyText
+        text="Crawling..."
+        speed={1.5}
+        className="text-xl"
+          />
+        )}
+
+        {routeStatus === "querying" && (
+          <ShinyText
+        text="Querying POIs..."
+        speed={1.5}
+        className="text-xl"
+          />
+        )}
+
+        {routeStatus !== "crawling" && routeStatus !== "querying" && (
+          <>
         <Button 
           onClick={handleReset}
           variant="outline"
@@ -117,14 +142,15 @@ const Index = () => {
         >
           Reset
         </Button>
-        
-        <Button 
-          onClick={handleCalculateRoute}
-          className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
-          disabled={!source || !destination || isSimulating}
-        >
-          Calculate Route
-        </Button>
+        {routeStatus === "idle" && (
+          <Button 
+            onClick={handleCalculateRoute}
+            className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
+            disabled={!source || !destination || isSimulating}
+          >
+            Calculate Route
+          </Button>
+        )}
         
         {hasRoute && (
           <Button 
@@ -143,6 +169,8 @@ const Index = () => {
           >
             Cancel
           </Button>
+        )}
+          </>
         )}
       </div>
     </div>

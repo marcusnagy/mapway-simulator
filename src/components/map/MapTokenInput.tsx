@@ -6,6 +6,7 @@ interface MapTokenInputProps {
   mapboxToken: string;
   setMapboxToken: (token: string) => void;
   setIsMapInitialized: (initialized: boolean) => void;
+  children?: React.ReactNode;
 }
 
 const MapTokenInput = ({ mapboxToken, setMapboxToken, setIsMapInitialized }: MapTokenInputProps) => {
