@@ -65,7 +65,7 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
           return (
             <CarouselItem key={day} className="basis-full">
               <div className="p-1">
-                <Card className="p-2 bg-black text-white">
+                <Card className="p-2 bg-black text-white border-0">
                   <CardHeader className="p-2">
                     <CardTitle className="text-sm">{day}</CardTitle>
                     <CardDescription className="text-xs">Occupancy</CardDescription>
@@ -98,8 +98,8 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
           );
         })}
       </CarouselContent>
-      <CarouselPrevious className="h-6 w-6 -left-3 bg-white/80 hover:bg-white" />
-      <CarouselNext className="h-6 w-6 -right-3 bg-white/80 hover:bg-white" />
+      <CarouselPrevious className="h-6 w-6 -left-3 bg-white/80 hover:bg-white absolute" />
+      <CarouselNext className="h-6 w-6 -right-3 bg-white/80 hover:bg-white absolute" />
     </Carousel>
   );
 };
