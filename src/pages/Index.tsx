@@ -5,6 +5,7 @@ import Map from "@/components/Map";
 import { useState } from "react";
 import { Coordinates } from "@/types/map";
 import { ShinyText } from "@/components/mapui/ShinyText";
+import { CategoryFilter } from "@/components/CategoryFilter";
 
 const Index = () => {
   const [source, setSource] = useState("");
@@ -62,6 +63,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative">
+      <div className="absolute top-4 right-4 z-10">
+        <CategoryFilter />
+      </div>
+      
       <Map 
         source={mapSource}
         destination={mapDestination}
