@@ -34,9 +34,9 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
         />
       </HoverCardTrigger>
       <HoverCardContent 
-        className="w-72 bg-black text-white p-4 rounded-md shadow-lg" 
+        className="w-80 bg-black text-white p-4 rounded-md shadow-lg" 
         style={{ 
-          zIndex: 9999,
+          zIndex: 99999,
           position: 'relative',
           maxHeight: '80vh',
           overflowY: 'auto'
@@ -85,10 +85,12 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
           </div>
         )}
 
-        {popularTimesHistogram && popularTimesHistogram.data && (
-          <div className="mt-2">
+        {popularTimesHistogram && popularTimesHistogram.data && Object.keys(popularTimesHistogram.data).some(day => 
+          popularTimesHistogram.data[day].some(d => d.occupancyPercent > 0)
+        ) && (
+          <div className="mt-2 relative">
             <strong>Popular Times:</strong>
-            <div className="max-w-[250px] mx-auto">
+            <div className="w-full relative px-4">
               <Histogram hist={popularTimesHistogram.data} />
             </div>
           </div>

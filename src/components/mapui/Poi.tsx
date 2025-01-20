@@ -1,6 +1,6 @@
 import React from "react";
 import {FaStar, FaStarHalfAlt, FaRegStar} from "react-icons/fa";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Area, AreaChart, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import {
   Carousel,
   CarouselContent,
@@ -34,15 +34,26 @@ export const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
   );
 };
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-black/80 px-2 py-1 rounded text-white text-xs">
+        {`${payload[0].value}%`}
+      </div>
+    );
+  }
+  return null;
+};
+
 export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; occupancyPercent: number }>> }> = ({ hist }) => {
-  const days = Object.keys(hist);
+  const days = Object.keys(hist).filter(day => hist[day].some(d => d.occupancyPercent > 0));
 
   return (
     <Carousel
       opts={{
         align: "start",
       }}
-      className="w-full max-w-[250px]"
+      className="w-full"
     >
       <CarouselContent>
         {days.map((day) => {
@@ -57,16 +68,27 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
                 <Card className="p-2 bg-black text-white">
                   <CardHeader className="p-2">
                     <CardTitle className="text-sm">{day}</CardTitle>
-                    <CardDescription className="text-xs">Occupancy %</CardDescription>
+                    <CardDescription className="text-xs">Occupancy</CardDescription>
                   </CardHeader>
                   <CardContent className="p-2">
                     <ResponsiveContainer width="100%" height={120}>
-                      <AreaChart data={dayData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Area type="monotone" dataKey="occupancyPercent" stroke="#8884d8" fill="#8884d8" />
+                      <AreaChart 
+                        data={dayData} 
+                        margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+                      >
+                        <XAxis 
+                          dataKey="hour" 
+                          tick={{ fontSize: 10 }} 
+                          tickFormatter={(value) => value.split(':')[0]}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="occupancyPercent" 
+                          stroke="#8884d8" 
+                          fill="#8884d8" 
+                          strokeWidth={2}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -76,8 +98,8 @@ export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; oc
           );
         })}
       </CarouselContent>
-      <CarouselPrevious className="h-6 w-6 -left-8" />
-      <CarouselNext className="h-6 w-6 -right-8" />
+      <CarouselPrevious className="h-6 w-6 -left-3 bg-white/80 hover:bg-white" />
+      <CarouselNext className="h-6 w-6 -right-3 bg-white/80 hover:bg-white" />
     </Carousel>
   );
 };
