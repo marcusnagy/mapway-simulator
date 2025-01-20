@@ -58,10 +58,21 @@ export function CategoryFilter() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="relative bg-background hover:bg-accent border-accent"
+        >
           <Filter className="h-4 w-4" />
           {selectedCategories.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary" />
+            <div 
+              className="absolute -top-2 -right-2 h-5 w-5 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#FF6600' }}
+            >
+              <span className="text-xs font-medium text-white">
+                {selectedCategories.length}
+              </span>
+            </div>
           )}
         </Button>
       </DropdownMenuTrigger>
