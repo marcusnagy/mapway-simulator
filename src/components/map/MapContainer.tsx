@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import ReactDOMServer from 'react-dom/server';
 import mapboxgl from 'mapbox-gl';
 import { Coordinates } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +37,7 @@ const MapContainer = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
+  const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [currentRoute, setCurrentRoute] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const { toast } = useToast();
 
@@ -59,6 +59,8 @@ const MapContainer = ({
       if (map.current.getSource('hexagons')) {
         map.current.removeSource('hexagons');
       }
+      poiMarkersRef.current.forEach(marker => marker.remove());
+      poiMarkersRef.current = [];
     }
     
     if (sourceMarker.current) {
@@ -314,7 +316,8 @@ const MapContainer = ({
       // Fetch POI data for the visited cells
       const poiData = await fetchPOIData(visitedCells);
       if (poiData && map.current) {
-        await addPOIMarkers(poiData.pois, map.current);
+        const markers = await addPOIMarkers(poiData.pois, map.current);
+        poiMarkersRef.current = markers;
       }
       setRouteStatus("done");
 
@@ -349,38 +352,6 @@ const MapContainer = ({
 };
 
 export default MapContainer;
-
-// async function addPOIMarkers(pois: any[], map: mapboxgl.Map) {
-//   for (const poi of pois) {
-//     const { locationLat, locationLng, imageUrl } = poi;
-//     if (!locationLat || !locationLng) continue;
-
-//     const markerEl = document.createElement("div");
-//     markerEl.style.width = "40px";
-//     markerEl.style.height = "40px";
-//     markerEl.style.borderRadius = "50%";
-//     markerEl.style.cursor = "pointer";
-//     markerEl.style.backgroundSize = "cover";
-//     markerEl.style.backgroundImage = imageUrl
-//       ? `url(${imageUrl})`
-//       : "url('https://img.icons8.com/?size=100&id=JnKur3Cocs7X&format=png&color=FD7E14')"; // example default marker
-
-//     const popupHtml = ReactDOMServer.renderToString(<POIPopup poi={poi} />);
-//     const popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true }).setHTML(popupHtml);
-
-//     popup.on('open', () => {
-//       const clostBtn = popup.getElement().querySelector('.mapboxgl-popup-close-button')
-//       if (clostBtn) {
-//         clostBtn.removeAttribute('aria-hidden');
-//       }
-//     });
-
-//     new mapboxgl.Marker(markerEl)
-//       .setLngLat([locationLng, locationLat])
-//       .setPopup(popup)
-//       .addTo(map);
-//   }
-// }
 
 async function fetchPOIData(visitedCells: Set<string>) {
   const cells = [...visitedCells];
