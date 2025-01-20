@@ -46,7 +46,10 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export const Histogram: React.FC<{ hist: Record<string, Array<{ hour: number; occupancyPercent: number }>> }> = ({ hist }) => {
-  const days = Object.keys(hist).filter(day => hist[day].some(d => d.occupancyPercent > 0));
+  const dayOrder = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  const days = Object.keys(hist)
+    .filter(day => hist[day].some(d => d.occupancyPercent > 0))
+    .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
 
   return (
     <Carousel
