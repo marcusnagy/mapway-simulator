@@ -22,7 +22,7 @@ const Index = () => {
   const [routeStatus, setRouteStatus] = useState<"idle" | "crawling" | "querying" | "done">("idle");
   const [allPOIs, setAllPOIs] = useState<POI[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSimulate = () => {
