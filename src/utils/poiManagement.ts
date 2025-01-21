@@ -1,59 +1,18 @@
-import { POI, HexagonPOI, HexagonPOISet } from "@/types/map";
-import { createPOIMarker } from '@/components/mapui/HoverCardMarker';
-import mapboxgl from 'mapbox-gl';
+import { POI } from "@/types/map";
 
-export async function addMarkerSafely(
-  poi: POI,
-  map: mapboxgl.Map | null,
-  poiMarkersRef: React.MutableRefObject<HexagonPOISet>
-) {
-  if (!map || poiMarkersRef.current.has(poi.placeId)) return;
-  const marker = await createPOIMarker(poi, map);
-  poiMarkersRef.current.add({
-    placeId: poi.placeId,
-    h3Index: poi.h3Index,
-    marker,
-    poi,
-  });
-}
+export const filterPOIsByCategories = (pois: POI[], selectedCategories: string[]): POI[] => {
+  if (selectedCategories.length === 0) return pois;
+  return pois.filter(poi => 
+    poi.categories?.some(category => selectedCategories.includes(category))
+  );
+};
 
-export function addMarkersByCategory(
-  pois: POI[],
-  categories: string[],
-  map: mapboxgl.Map | null,
-  poiMarkersRef: React.MutableRefObject<HexagonPOISet>
-) {
-  if (!map) return;
-  pois.forEach(async (poi) => {
-    if (
-      poi.placeId &&
-      poi.categories?.some((cat) => categories.includes(cat))
-    ) {
-      await addMarkerSafely(poi, map, poiMarkersRef);
-    }
-  });
-}
+export const addNewPOI = (pois: POI[], newPoi: POI): POI[] => {
+  const exists = pois.some(poi => poi.placeId === newPoi.placeId);
+  if (exists) return pois;
+  return [...pois, newPoi];
+};
 
-export function removeMarkersByCategory(
-  categories: string[],
-  poiMarkersRef: React.MutableRefObject<HexagonPOISet>,
-  pois?: POI[]
-) {
-  if (pois && pois.length > 0) {
-    pois.forEach((poi) => {
-      if (poi.placeId && poiMarkersRef.current.has(poi.placeId)) {
-        const hexPoi = poiMarkersRef.current.get(poi.placeId);
-        hexPoi?.marker.remove();
-        poiMarkersRef.current.delete(poi.placeId);
-      }
-    });
-  } else {
-    poiMarkersRef.current.getAll().forEach((hexPoi) => {
-      const { placeId, poi } = hexPoi;
-      if (hexPoi.poi && (poi.categories?.some((cat) => categories.includes(cat)) || !poi.categories?.length)) {
-        hexPoi.marker.remove();
-        poiMarkersRef.current.delete(placeId);
-      }
-    });
-  }
-}
+export const removePOI = (pois: POI[], placeId: string): POI[] => {
+  return pois.filter(poi => poi.placeId !== placeId);
+};

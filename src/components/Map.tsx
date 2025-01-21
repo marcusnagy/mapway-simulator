@@ -19,7 +19,6 @@ interface MapProps {
   setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>;
   selectedCategories: string[];
   setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
-  children?: React.ReactNode;
 }
 
 const Map = ({ 
@@ -43,21 +42,20 @@ const Map = ({
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   useEffect(() => {
-    if (!mapboxToken && !isMapLoaded) return;
+    if (!mapboxToken || !isMapLoaded) return;
 
     async function fetchIPLocation() {
       try {
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
         setSource(`${data.longitude},${data.latitude}`);
-        // data should have latitude/longitude
         setMapSource({ lat: data.latitude, lng: data.longitude });
       } catch (e) {
         console.error('Error fetching IP location:', e);
       }
     }
     fetchIPLocation();
-  }, [mapboxToken]);
+  }, [mapboxToken, isMapLoaded]);
 
   if (!isMapInitialized) {
     return (

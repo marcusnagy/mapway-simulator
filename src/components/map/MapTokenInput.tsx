@@ -1,40 +1,46 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface MapTokenInputProps {
   mapboxToken: string;
   setMapboxToken: (token: string) => void;
   setIsMapInitialized: (initialized: boolean) => void;
-  children?: React.ReactNode;
 }
 
 const MapTokenInput = ({ mapboxToken, setMapboxToken, setIsMapInitialized }: MapTokenInputProps) => {
+  const [token, setToken] = useState(mapboxToken);
+  const { toast } = useToast();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid Mapbox token",
+      });
+      return;
+    }
+    setMapboxToken(token);
+    setIsMapInitialized(true);
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm">
-      <div className="p-6 space-y-4 bg-gray-900 rounded-lg border border-gray-700 max-w-md w-full mx-4">
-        <div className="space-y-2">
-          <Label htmlFor="mapbox-token" className="text-gray-300">Mapbox Access Token</Label>
-          <Input
-            id="mapbox-token"
-            placeholder="Enter your Mapbox public access token (pk.*)"
-            value={mapboxToken}
-            onChange={(e) => setMapboxToken(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-white"
-          />
-          <p className="text-sm text-gray-400">
-            Get your token from <a href="https://www.mapbox.com/account/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Mapbox Dashboard</a>
-          </p>
-        </div>
-        <Button 
-          onClick={() => setIsMapInitialized(true)} 
-          disabled={!mapboxToken || !mapboxToken.startsWith('pk.')}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          Initialize Map
-        </Button>
-      </div>
-    </div>
+    <form onSubmit={handleSubmit} className="w-96 space-y-4 bg-black/50 backdrop-blur-sm p-6 rounded-lg">
+      <h2 className="text-xl font-semibold text-white">Enter Mapbox Token</h2>
+      <Input
+        type="text"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder="Enter your Mapbox token"
+        className="bg-gray-900/50 border-gray-700 text-white"
+      />
+      <Button type="submit" className="w-full">
+        Initialize Map
+      </Button>
+    </form>
   );
 };
 

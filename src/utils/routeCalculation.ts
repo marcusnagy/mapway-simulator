@@ -1,52 +1,35 @@
 import { Coordinates } from "@/types/map";
-import mapboxgl from 'mapbox-gl';
 
-export async function calculateRoute(
-  src: Coordinates,
-  dest: Coordinates,
-  map: mapboxgl.Map,
-  mapboxToken: string
-) {
+export const calculateRoute = async (source: Coordinates, destination: Coordinates, mapboxToken: string) => {
   const response = await fetch(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${src.lng},${src.lat};${dest.lng},${dest.lat}?geometries=geojson&overview=full&access_token=${mapboxToken}`
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${source.lng},${source.lat};${destination.lng},${destination.lat}?geometries=geojson&access_token=${mapboxToken}`
   );
-
-  const data = await response.json();
-  if (!data.routes?.[0]) {
-    throw new Error('No route found');
+  
+  if (!response.ok) {
+    throw new Error('Failed to calculate route');
   }
+  
+  return await response.json();
+};
 
-  const route = data.routes[0].geometry;
-
-  map.addSource('route', {
-    type: 'geojson',
-    data: {
-      type: 'Feature',
-      properties: {},
-      geometry: route,
-    },
-  });
-
-  map.addLayer({
-    id: 'route',
-    type: 'line',
-    source: 'route',
-    layout: {
-      'line-join': 'round',
-      'line-cap': 'round',
-    },
-    paint: {
-      'line-color': '#FF6600',
-      'line-width': 6,
-    },
-  });
-
-  return {
-    route: {
-      type: 'Feature' as const,
-      properties: {},
-      geometry: route,
-    },
-    coordinates: data.routes[0].geometry.coordinates,
-  };
-}
+export const simulateRoute = (
+  coordinates: number[][],
+  speed: number,
+  onUpdate: (position: number[]) => void,
+  onComplete: () => void,
+  isCanceled: boolean
+) => {
+  let currentIndex = 0;
+  const interval = setInterval(() => {
+    if (isCanceled || currentIndex >= coordinates.length) {
+      clearInterval(interval);
+      onComplete();
+      return;
+    }
+    
+    onUpdate(coordinates[currentIndex]);
+    currentIndex++;
+  }, (1000 * 3600) / (speed * coordinates.length));
+  
+  return interval;
+};
