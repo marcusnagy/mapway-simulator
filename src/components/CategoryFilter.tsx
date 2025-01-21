@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface CategoryFilterProps {
   allCategories: string[];
@@ -23,6 +24,7 @@ export function CategoryFilter({
   onChangeSelected,
 } : CategoryFilterProps) {
   const [selectAll, setSelectAll] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleCategoryChange = (cat: string, checked: boolean) => {
     let newCategories = [...selectedCategories];
@@ -32,7 +34,6 @@ export function CategoryFilter({
     setSelectAll(newCategories.length === allCategories.length);
   };
 
-
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     onChangeSelected(checked ? allCategories : []);
@@ -41,6 +42,14 @@ export function CategoryFilter({
   const handleDeselectAll = () => {
     setSelectAll(false);
     onChangeSelected([]);
+  };
+
+  const filteredCategories = allCategories.filter(category =>
+    category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   return (
@@ -81,8 +90,28 @@ export function CategoryFilter({
           </div>
         </div>
         <DropdownMenuSeparator />
+        <div className="p-2">
+          <div className="relative">
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search categories..."
+              className="w-full"
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                onClick={clearSearch}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
         <div className="max-h-[300px] overflow-y-auto">
-          {allCategories.map((category) => (
+          {filteredCategories.map((category) => (
             <DropdownMenuItem
               key={category}
               className="flex items-center space-x-2 p-2"
