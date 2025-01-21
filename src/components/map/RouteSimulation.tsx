@@ -9,6 +9,8 @@ interface RouteSimulationProps {
   speed: number; // km/h
   onSimulationEnd: () => void;
   isCanceled: boolean;
+  onStepChange: (step: number, route: GeoJSON.Feature<GeoJSON.LineString>) => void;
+  onComplete?: () => void;
   children?: React.ReactNode;
 }
 
@@ -17,7 +19,9 @@ const RouteSimulation = ({
   route,
   speed,
   onSimulationEnd,
-  isCanceled 
+  isCanceled,
+  onStepChange,
+  onComplete,
   }: RouteSimulationProps) => {
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -64,13 +68,19 @@ const RouteSimulation = ({
       if (isCanceled) {
         markerRef.current.remove();
         onSimulationEnd();
+        if (onComplete) onComplete();
         return;
       }
 
       if (currentStep >= steps) {
         markerRef.current.remove();
         onSimulationEnd();
+        if (onComplete) onComplete();
         return;
+      }
+
+      if (onStepChange) {
+        onStepChange(currentStep, route);
       }
 
       const coord = coordinates[currentStep];

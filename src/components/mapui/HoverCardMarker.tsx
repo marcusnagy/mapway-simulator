@@ -102,6 +102,27 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
   );
 }
 
+export async function createPOIMarker(poi: POI, map: mapboxgl.Map): Promise<mapboxgl.Marker> {
+    // Create a container for all markers
+    const markersContainer = document.createElement("div");
+    markersContainer.style.zIndex = "1";
+    document.body.appendChild(markersContainer);
+  
+      const markerEl = document.createElement("div");
+      markerEl.className = "poi-marker";
+      markerEl.style.zIndex = "1";
+  
+      const root = createRoot(markerEl);
+      root.render(<HoverCardMarker poi={poi} />);
+  
+      const marker = new mapboxgl.Marker(markerEl)
+        .setLngLat([poi.locationLng, poi.locationLat])
+        .addTo(map);
+  
+      
+      return marker
+}
+
 export async function addPOIMarkers(pois: any[], map: mapboxgl.Map): Promise<mapboxgl.Marker[]> {
   const markers: mapboxgl.Marker[] = [];
   // Create a container for all markers
@@ -127,7 +148,7 @@ export async function addPOIMarkers(pois: any[], map: mapboxgl.Map): Promise<map
     markers.push(marker);
     }
     return markers;
-  }
+}
   
 
 export default HoverCardMarker;

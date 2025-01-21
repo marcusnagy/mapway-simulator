@@ -3,9 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Map from "@/components/Map";
 import { useState } from "react";
-import { Coordinates } from "@/types/map";
+import { Coordinates, POI } from "@/types/map";
 import { ShinyText } from "@/components/mapui/ShinyText";
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { set } from "date-fns";
 
 const Index = () => {
   const [source, setSource] = useState("");
@@ -17,6 +18,8 @@ const Index = () => {
   const [mapDestination, setMapDestination] = useState<Coordinates | null>(null);
   const [isCanceled, setIsCanceled] = useState(false);
   const [routeStatus, setRouteStatus] = useState<"idle" | "crawling" | "querying" | "done">("idle")
+  const [allPOIs, setAllPOIs] = useState<POI[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const handleSimulate = () => {
     if (!mapSource || !mapDestination) return;
@@ -38,6 +41,9 @@ const Index = () => {
     setIsSimulating(false);
     setMapSource(null);
     setMapDestination(null);
+    setIsCanceled(false);
+    setSelectedCategories([]);
+    setAllPOIs([]);
   };
 
   const handleCalculateRoute = () => {
@@ -64,7 +70,11 @@ const Index = () => {
   return (
     <div className="min-h-screen relative">
       <div className="absolute top-4 right-4 z-10">
-        <CategoryFilter />
+        <CategoryFilter
+          allCategories={[...new Set(allPOIs.flatMap(p => p.categories ?? []))]}
+          selectedCategories={selectedCategories}
+          onChangeSelected={(cats) => setSelectedCategories(cats)}
+        />
       </div>
       
       <Map 
@@ -78,6 +88,10 @@ const Index = () => {
         setMapSource={setMapSource}
         onRouteCalculated={() => setHasRoute(true)}
         onSimulationEnd={handleSimulationEnd}
+        allPOIs={allPOIs}
+        setAllPOIs={setAllPOIs}
+        selectedCategories={selectedCategories}
+        setSelectedCategories={setSelectedCategories}
       />
       
       {/* Floating Controls Overlay */}

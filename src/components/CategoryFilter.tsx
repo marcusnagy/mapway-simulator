@@ -10,49 +10,37 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Filter } from "lucide-react";
 
-interface Category {
-  id: string;
-  label: string;
+interface CategoryFilterProps {
+  allCategories: string[];
+  selectedCategories: string[];
+  onChangeSelected: (cats: string[]) => void;
+  children?: React.ReactNode;
 }
 
-// Example categories - replace with your actual categories
-const CATEGORIES: Category[] = [
-  { id: "restaurants", label: "Restaurants" },
-  { id: "shopping", label: "Shopping" },
-  { id: "entertainment", label: "Entertainment" },
-  { id: "services", label: "Services" },
-];
-
-export function CategoryFilter() {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+export function CategoryFilter({
+  allCategories,
+  selectedCategories,
+  onChangeSelected,
+} : CategoryFilterProps) {
   const [selectAll, setSelectAll] = useState(true);
 
-  // Initialize with all categories selected
-  useEffect(() => {
-    if (selectAll) {
-      setSelectedCategories(CATEGORIES.map(cat => cat.id));
-    }
-  }, []);
-
-  const handleCategoryChange = (categoryId: string, checked: boolean) => {
-    setSelectedCategories(prev => {
-      const newSelection = checked
-        ? [...prev, categoryId]
-        : prev.filter(id => id !== categoryId);
-      
-      setSelectAll(newSelection.length === CATEGORIES.length);
-      return newSelection;
-    });
+  const handleCategoryChange = (cat: string, checked: boolean) => {
+    let newCategories = [...selectedCategories];
+    if (checked) newCategories.push(cat);
+    else newCategories = newCategories.filter((c) => c !== cat);
+    onChangeSelected(newCategories);
+    setSelectAll(newCategories.length === allCategories.length);
   };
+
 
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
-    setSelectedCategories(checked ? CATEGORIES.map(cat => cat.id) : []);
+    onChangeSelected(checked ? allCategories : []);
   };
 
   const handleDeselectAll = () => {
     setSelectAll(false);
-    setSelectedCategories([]);
+    onChangeSelected([]);
   };
 
   return (
@@ -94,24 +82,24 @@ export function CategoryFilter() {
         </div>
         <DropdownMenuSeparator />
         <div className="max-h-[300px] overflow-y-auto">
-          {CATEGORIES.map((category) => (
+          {allCategories.map((category) => (
             <DropdownMenuItem
-              key={category.id}
+              key={category}
               className="flex items-center space-x-2 p-2"
               onSelect={(e) => e.preventDefault()}
             >
               <Checkbox
-                id={category.id}
-                checked={selectedCategories.includes(category.id)}
+                id={category}
+                checked={selectedCategories.includes(category)}
                 onCheckedChange={(checked) =>
-                  handleCategoryChange(category.id, checked as boolean)
+                  handleCategoryChange(category, checked as boolean)
                 }
               />
               <label
-                htmlFor={category.id}
+                htmlFor={category}
                 className="flex-grow text-sm cursor-pointer"
               >
-                {category.label}
+                {category}
               </label>
             </DropdownMenuItem>
           ))}

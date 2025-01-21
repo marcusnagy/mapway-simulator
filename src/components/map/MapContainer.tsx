@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { Coordinates } from '@/types/map';
+import { Coordinates, HexagonPOI, HexagonPOISet, POI } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
 import RouteSimulation from './RouteSimulation';
-import { latLngToCell, cellToBoundary } from "h3-js";
+import { latLngToCell, cellToBoundary, h3IndexToSplitLong, cellToParent, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
-import { addPOIMarkers } from '../mapui/HoverCardMarker';
+import { createPOIMarker } from '../mapui/HoverCardMarker';
+import { set } from 'date-fns';
 
 interface MapContainerProps {
   mapboxToken: string;
@@ -18,6 +19,10 @@ interface MapContainerProps {
   onRouteCalculated: () => void;
   onSimulationEnd: () => void;
   setIsMapLoaded: (loaded: boolean) => void;
+  allPOIs: POI[];
+  setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>;
+  selectedCategories: string[];
+  setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
   children?: React.ReactNode;
 }
 
@@ -31,15 +36,111 @@ const MapContainer = ({
   setRouteStatus,
   onRouteCalculated,
   onSimulationEnd,
-  setIsMapLoaded 
+  setIsMapLoaded,
+  allPOIs,
+  setAllPOIs,
+  selectedCategories,
+  setSelectedCategories,
 }: MapContainerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const sourceMarker = useRef<mapboxgl.Marker | null>(null);
   const destinationMarker = useRef<mapboxgl.Marker | null>(null);
-  const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const poiMarkersRef = useRef<HexagonPOISet>(new HexagonPOISet());
+  const hexCells = useRef<string[]>([]);
+  const lastHexRef = useRef<string | null>(null);
   const [currentRoute, setCurrentRoute] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
+  const [oldCategories, setOldCategories] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const addMarkerSafely = async (poi: POI) => {
+    if (poiMarkersRef.current.has(poi.placeId)) return;
+    const marker = await createPOIMarker(poi, map.current);
+    poiMarkersRef.current.add({
+      placeId: poi.placeId,
+      h3Index: poi.h3Index,
+      marker,
+      poi,
+    });
+  };
+
+  function simulationOnComplete() {
+    lastHexRef.current = "initial";
+    addMarkersByCategory(allPOIs, selectedCategories);
+  }
+
+  // Add markers for POIs in selected categories
+  function addMarkersByCategory(pois: POI[], categories: string[]) {
+    if (!map.current) return;
+  
+    // For each POI whose category is selected, add marker if not already present
+    pois.forEach(async (poi) => {
+      if (
+        poi.placeId &&
+        poi.categories?.some((cat) => categories.includes(cat))
+      ) {
+        addMarkerSafely(poi);
+      }
+    });
+  }
+
+  // Remove markers for POIs in selected categories
+  function removeMarkersByCategory(categories: string[], pois?: POI[]) {
+    if (pois && pois.length > 0) {
+      // Remove markers for the provided POIs
+      pois.forEach((poi) => {
+        if (poi.placeId && poiMarkersRef.current.has(poi.placeId)) {
+          console.log("Removing marker for placeId:", poi.placeId);
+          const hexPoi = poiMarkersRef.current.get(poi.placeId);
+          hexPoi?.marker.remove();
+          poiMarkersRef.current.delete(poi.placeId);
+        }
+      });
+    } else {
+      // Remove markers from any POI with these categories
+      poiMarkersRef.current.getAll().forEach((hexPoi) => {
+        const { placeId, poi } = hexPoi;
+        if (hexPoi.poi && (poi.categories?.some((cat) => categories.includes(cat)) || !poi.categories?.length)) {
+          console.log("Removing marker for placeId:", placeId);
+          hexPoi.marker.remove();
+          poiMarkersRef.current.delete(placeId);
+        }
+      });
+    }
+  }
+
+  // Update markers when selected categories change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+    console.log('Selected categories changed:', selectedCategories);
+
+    // If there are no selected categories, remove all POI markers
+    if (selectedCategories.length === 0) {
+      console.log('No categories selected, removing all markers');
+      poiMarkersRef.current.getAll().forEach((hexPoi) => hexPoi.marker.remove());
+      poiMarkersRef.current = new HexagonPOISet();
+      setOldCategories([]);
+      return;
+    }
+
+    // Remove markers for categories that got turned off
+    // Categories removed
+    const removedCategories = oldCategories.filter((cat) => !selectedCategories.includes(cat));
+    if (removedCategories.length > 0) {
+      console.log("Removing markers for categories:", removedCategories);
+      removeMarkersByCategory(removedCategories);
+    }
+
+    // Add markers for categories that got turned on
+    selectedCategories.forEach((cat) => {
+      const relevantPOIs = allPOIs.filter((p) => p.categories?.includes(cat) && !poiMarkersRef.current.has(p.placeId));
+      addMarkersByCategory(relevantPOIs, [cat]);
+    });
+
+    setOldCategories(selectedCategories);
+  }, 200);
+  return () => clearTimeout(timeoutId);
+  }, [selectedCategories, allPOIs]);
 
   // Clear existing route and markers
   const clearRouteAndMarkers = () => {
@@ -59,8 +160,12 @@ const MapContainer = ({
       if (map.current.getSource('hexagons')) {
         map.current.removeSource('hexagons');
       }
-      poiMarkersRef.current.forEach(marker => marker.remove());
-      poiMarkersRef.current = [];
+      poiMarkersRef.current.getAll().forEach(hexPoi => hexPoi.marker.remove());
+      poiMarkersRef.current = new HexagonPOISet();
+      hexCells.current = [];
+      lastHexRef.current = "initial";
+      setAllPOIs([]);
+      setOldCategories([]);
     }
     
     if (sourceMarker.current) {
@@ -131,6 +236,7 @@ const MapContainer = ({
     }
   }, [mapboxToken, setIsMapLoaded, toast]);
 
+  // Handle source marker updates
   useEffect(() => {
     if (map.current && source && !destination) {
       console.log('Updating source marker:', source);
@@ -254,13 +360,11 @@ const MapContainer = ({
         features: [],
       }
       
-      const visitedCells = new Set<string>();
-      
       // Convert route coords ([lng, lat]) to hex polygons
       route.coordinates.forEach(([lng, lat]) => {
-      const h3Index = latLngToCell(lat, lng, 7); // pick suitable resolution
-      if (visitedCells.has(h3Index)) return;
-      visitedCells.add(h3Index);
+      const h3Index = latLngToCell(lat, lng, 7);
+      if (hexCells.current.includes(h3Index)) return;
+      hexCells.current.push(h3Index);
 
       const boundary = cellToBoundary(h3Index, true); // [[lat, lng], ...]
       console.log('Adding hexagon:', h3Index, boundary);
@@ -307,17 +411,58 @@ const MapContainer = ({
     } else {
       (map.current.getSource('hexagons') as mapboxgl.GeoJSONSource).setData(hexCollection);
     }
+    setRouteStatus("querying");
 
+    // Fetch POI data for the visited cells
+    const poiData = await fetchPOIData(hexCells.current);
+    const categories: Set<string> = new Set();
+    if (poiData && map.current) {
+      setAllPOIs(poiData.pois);
+      for (const poi of poiData.pois) {
+        if (poi.categories) {
+          poi.categories.forEach((cat: string) => categories.add(cat));
+          
+        }
+      }
+      console.log('Categories:', categories);
+      setSelectedCategories(Array.from(categories));
+    }
+
+      setRouteStatus("crawling");
       // Send hexagons to the backend
       await sendHexRequest(hexCollection);
 
       setRouteStatus("querying");
 
+      // After crawling, fetch more POIs
+      const newPoiData = await fetchPOIData(hexCells.current);
+      const newPois: POI[] = [];
       // Fetch POI data for the visited cells
-      const poiData = await fetchPOIData(visitedCells);
-      if (poiData && map.current) {
-        const markers = await addPOIMarkers(poiData.pois, map.current);
-        poiMarkersRef.current = markers;
+      if (newPoiData && map.current) {
+        // Merge newly fetched POIs into existing state
+        setAllPOIs((prev) => {
+        const merged = [...prev];
+        newPoiData.pois.forEach((poi: POI) => {
+          // If we don't have it yet, add to merged
+          if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
+            merged.push(poi);
+            newPois.push(poi);
+          }
+        });
+        return merged;
+      });
+      // Only add new markers in selected categories
+      newPois.forEach(async (poi) => {
+        if (
+          !poi.categories?.some((cat) => selectedCategories.includes(cat))
+        ) {
+          poi.categories.forEach((cat: string) => categories.add(cat));
+          
+        }
+      });
+      if (newPois.length > 0) {
+        setSelectedCategories(Array.from(categories));
+      }
       }
       setRouteStatus("done");
 
@@ -336,6 +481,58 @@ const MapContainer = ({
     }
   };
 
+  const handleStepChange = async (step: number, route: GeoJSON.Feature<GeoJSON.LineString>) => {
+    console.log('Step change:', step);
+  
+    // 1) Remove all POI markers
+    if (lastHexRef.current === "initial") {
+      console.log('Initial hexagon already processed');
+      poiMarkersRef.current.getAll().forEach(poi => poi.marker.remove());
+      poiMarkersRef.current = new HexagonPOISet();
+    }
+  
+    // 2) Calculate the current hexagon index of the route based on the current step
+    const coordinates = route.geometry.coordinates;
+    const currentCoord = coordinates[step];
+    // Convert the current coordinate to a hexagon index
+    const currentHex = latLngToCell(currentCoord[1], currentCoord[0], 7);
+  
+    // 3) Determine the hexagons that are 3 steps ahead
+    const idx = hexCells.current.findIndex((hex) => hex === currentHex);
+    if (idx === -1) {
+      console.error('Current hexagon not found in the list');
+      return;
+    }
+    const aheadHexes = hexCells.current.slice(idx, Math.min(idx + 3, hexCells.current.length));
+
+    const aheadHexCollectionRes9 = aheadHexes.flatMap((hex) => cellToChildren(hex, 9)); // POIs indexed at resolution 9 in the database
+
+    // 3) Filter POIs by selected categories and ahead hexagons
+    if (lastHexRef.current === currentHex) {
+      console.log('Current hexagon already processed');
+      return
+    }
+    const poisInAheadHexes = allPOIs.filter(
+      (poi) =>
+        poi.categories?.some((cat) => selectedCategories.includes(cat)) &&
+        aheadHexCollectionRes9.includes(poi.h3Index)
+    );
+  
+    // 4) Add markers for POIs in the ahead hexagons
+    addMarkersByCategory(poisInAheadHexes, selectedCategories);
+
+    // 5) Remove POIs from hexagons that are left behind
+    const passedHexes = hexCells.current.slice(0, idx);
+    const passedHexCellsRes9 = passedHexes.flatMap((hex) => cellToChildren(hex, 9)); // POIs indexed at resolution 9 in the database
+    const poisInPassedHexes = allPOIs.filter(
+      (poi) =>
+        poi.categories?.some((cat) => selectedCategories.includes(cat)) &&
+        passedHexCellsRes9.includes(poi.h3Index)
+    );
+    removeMarkersByCategory(selectedCategories, poisInPassedHexes);
+    lastHexRef.current = currentHex;
+  }
+
   return (
     <div ref={mapContainer} className="absolute inset-0">
       {isSimulating && currentRoute && map.current && (
@@ -345,15 +542,17 @@ const MapContainer = ({
           speed={speed}
           onSimulationEnd={onSimulationEnd}
           isCanceled={isCanceled}
+          onStepChange={handleStepChange}
+          onComplete={simulationOnComplete}
         />
       )}
     </div>
   );
-};
+}
 
 export default MapContainer;
 
-async function fetchPOIData(visitedCells: Set<string>) {
+async function fetchPOIData(visitedCells: string[]) {
   const cells = [...visitedCells];
   const queryString = cells.map((cell) => `parentCells=${encodeURIComponent(cell)}`).join('&');
   const res = await fetch(`/v1/poi/h3?${queryString}`);

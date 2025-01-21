@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Coordinates } from '@/types/map';
+import { Coordinates, POI } from '@/types/map';
 import MapTokenInput from './map/MapTokenInput';
 import MapContainer from './map/MapContainer';
+import Squares from './Squares';
 
 interface MapProps {
   source: Coordinates | null;
@@ -14,6 +15,11 @@ interface MapProps {
   setMapSource: (source: Coordinates) => void;
   onRouteCalculated: () => void;
   onSimulationEnd: () => void;
+  allPOIs: POI[];
+  setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>;
+  selectedCategories: string[];
+  setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
+  children?: React.ReactNode;
 }
 
 const Map = ({ 
@@ -26,7 +32,11 @@ const Map = ({
   setSource,
   setMapSource,
   onRouteCalculated,
-  onSimulationEnd 
+  onSimulationEnd,
+  allPOIs,
+  setAllPOIs,
+  selectedCategories,
+  setSelectedCategories,
 }: MapProps) => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
@@ -51,16 +61,28 @@ const Map = ({
 
   if (!isMapInitialized) {
     return (
-      <MapTokenInput
-        mapboxToken={mapboxToken}
-        setMapboxToken={setMapboxToken}
-        setIsMapInitialized={setIsMapInitialized}
-      />
+      <div className="relative w-full h-screen">
+        <Squares />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <MapTokenInput
+            mapboxToken={mapboxToken}
+            setMapboxToken={setMapboxToken}
+            setIsMapInitialized={setIsMapInitialized}
+          />
+        </div>
+      </div>
     );
   }
 
   if (!mapboxToken) {
-    return <div>Please enter a Mapbox token</div>;
+    return (
+      <div className="relative w-full h-screen">
+        <Squares />
+        <div className="absolute inset-0 flex items-center justify-center">
+          Please enter a Mapbox token
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -76,6 +98,10 @@ const Map = ({
         onRouteCalculated={onRouteCalculated}
         onSimulationEnd={onSimulationEnd}
         setIsMapLoaded={setIsMapLoaded}
+        allPOIs={allPOIs}
+        setAllPOIs={setAllPOIs}
+        selectedCategories={selectedCategories}
+        setSelectedCategories={setSelectedCategories}
       />
     </div>
   );
