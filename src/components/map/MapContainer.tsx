@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import RouteSimulation from './RouteSimulation';
 import { latLngToCell, cellToBoundary, h3IndexToSplitLong, cellToParent, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
-import { createPOIMarker } from '../mapui/HoverCardMarker';
+import { addPOIMarkers, createPOIMarker } from '../mapui/HoverCardMarker';
 import { set } from 'date-fns';
 
 interface MapContainerProps {
@@ -53,15 +53,17 @@ const MapContainer = ({
   const [oldCategories, setOldCategories] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const addMarkerSafely = async (poi: POI) => {
-    if (poiMarkersRef.current.has(poi.placeId)) return;
-    const marker = await createPOIMarker(poi, map.current);
-    poiMarkersRef.current.add({
-      placeId: poi.placeId,
-      h3Index: poi.h3Index,
-      marker,
-      poi,
-    });
+  const addMarkersSafely = async (pois: POI[]) => {
+    const newMarkers = await addPOIMarkers(pois, map.current); // Bulk create markers
+
+    // Add the created markers to poiMarkersRef
+    newMarkers.getAll().forEach((marker) => {
+    if (!poiMarkersRef.current.has(marker.placeId)) {
+      poiMarkersRef.current.add(marker);
+    } else {
+      console.warn(`Marker for POI ${marker.placeId} already exists.`);
+    }
+  });
   };
 
   function simulationOnComplete() {
@@ -72,16 +74,26 @@ const MapContainer = ({
   // Add markers for POIs in selected categories
   function addMarkersByCategory(pois: POI[], categories: string[]) {
     if (!map.current) return;
-  
-    // For each POI whose category is selected, add marker if not already present
-    pois.forEach(async (poi) => {
+    
+    // Use a Set to collect unique POIs
+    const uniquePOIs = new Map<string, POI>();
+    // Step 1: Filter the POIs based on the selected categories and existing markers
+     // Step 1: Filter POIs based on selected categories and add to uniquePOIs
+    pois.forEach((poi) => {
       if (
         poi.placeId &&
-        poi.categories?.some((cat) => categories.includes(cat))
+        poi.categories?.some((cat) => categories.includes(cat)) &&
+        !poiMarkersRef.current.has(poi.placeId) // Ensure it's not already added
       ) {
-        addMarkerSafely(poi);
+        uniquePOIs.set(poi.placeId, poi);
       }
     });
+
+    // Step 2: Add all filtered POIs in one go using addMarkersSafely
+    if (uniquePOIs.size > 0) {
+      addMarkersSafely(Array.from(uniquePOIs.values()));
+    }
+    console.log('Added markers for unique POIs:', uniquePOIs.size);
   }
 
   // Remove markers for POIs in selected categories
@@ -97,15 +109,17 @@ const MapContainer = ({
         }
       });
     } else {
+      console.log('Removing markers for categories:', categories);
       // Remove markers from any POI with these categories
       poiMarkersRef.current.getAll().forEach((hexPoi) => {
         const { placeId, poi } = hexPoi;
         if (hexPoi.poi && (poi.categories?.some((cat) => categories.includes(cat)) || !poi.categories?.length)) {
           console.log("Removing marker for placeId:", placeId);
           hexPoi.marker.remove();
-          poiMarkersRef.current.delete(placeId);
+          poiMarkersRef.current.delete(hexPoi.placeId);
         }
       });
+      console.log('Current POI Markers:', poiMarkersRef.current.getAll());
     }
   }
 
@@ -123,6 +137,14 @@ const MapContainer = ({
       return;
     }
 
+    // Step 2: Collect all POIs for the selected categories
+    const relevantPOIs = allPOIs.filter((poi) =>
+      poi.categories?.some((cat) => selectedCategories.includes(cat))
+    );
+
+    // Step 3: Add markers for unique POIs
+    addMarkersByCategory(relevantPOIs, selectedCategories);
+
     // Remove markers for categories that got turned off
     // Categories removed
     const removedCategories = oldCategories.filter((cat) => !selectedCategories.includes(cat));
@@ -130,12 +152,6 @@ const MapContainer = ({
       console.log("Removing markers for categories:", removedCategories);
       removeMarkersByCategory(removedCategories);
     }
-
-    // Add markers for categories that got turned on
-    selectedCategories.forEach((cat) => {
-      const relevantPOIs = allPOIs.filter((p) => p.categories?.includes(cat) && !poiMarkersRef.current.has(p.placeId));
-      addMarkersByCategory(relevantPOIs, [cat]);
-    });
 
     setOldCategories(selectedCategories);
   }, 200);

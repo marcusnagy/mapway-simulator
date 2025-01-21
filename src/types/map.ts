@@ -1,5 +1,3 @@
-import { h3IndexToSplitLong } from "h3-js";
-
 export interface Coordinates {
   lat: number;
   lng: number;

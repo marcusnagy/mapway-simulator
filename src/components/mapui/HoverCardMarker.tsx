@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import {Histogram, StarRating} from "@/components/mapui/Poi";
 import { Button } from "@/components/ui/button";
-import { POI } from "@/types/map";
+import { HexagonPOISet, POI } from "@/types/map";
 import { Globe, MapPin, Phone } from "lucide-react";
 
 interface HoverCardMarkerProps {
@@ -21,17 +21,18 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
       <HoverCardTrigger asChild>
         <Button
           style={{
-            width: "40px",
-            height: "40px",
-            padding: 0,
-            borderRadius: "9999px", // Ensures perfect circle
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            cursor: "pointer",
-            backgroundColor: "transparent",
+            width: "40px", // Ensures the button is a square
+            height: "40px", // Same as width
+            padding: 0, // Ensures no extra spacing inside the button
+            borderRadius: "50%", // Makes the button circular
+            backgroundSize: "cover", // Ensures the image covers the entire button
+            backgroundPosition: "center", // Centers the image within the button
+            cursor: "pointer", // Sets the pointer cursor
+            overflow: "hidden", // Ensures the image does not spill out of the circular boundary
+            backgroundColor: "transparent", // Sets the background to transparent
             backgroundImage: poi.imageUrl
               ? `url(${poi.imageUrl})`
-              : "url('https://img.icons8.com/?size=512&id=JnKur3Cocs7X&format=png&color=FD7E14')",
+              : "url('https://img.icons8.com/?size=512&id=JnKur3Cocs7X&format=png&color=FD7E14')", // Sets the background image
           }}
         />
       </HoverCardTrigger>
@@ -71,9 +72,18 @@ const HoverCardMarker: React.FC<HoverCardMarkerProps> = ({ poi }) => {
           </p>
         )}
         {website && (
-          <p className="text-sm mb-1 flex items-center">
-            <Globe className="mr-2" /> <a href={website} target="_blank" rel="noreferrer"><DecryptedText text={website} /></a>
-          </p>
+           <p className="text-sm mb-1 flex items-center">
+           <Globe className="mr-2" />
+           <a href={website} target="_blank" rel="noreferrer">
+             <DecryptedText
+               text={
+                 website.length > 30
+                   ? `${website.substring(0, 27)}...`
+                   : website
+               }
+             />
+           </a>
+         </p>
         )}
 
         {openingHours && openingHours.length > 0 && (
@@ -123,8 +133,8 @@ export async function createPOIMarker(poi: POI, map: mapboxgl.Map): Promise<mapb
       return marker
 }
 
-export async function addPOIMarkers(pois: any[], map: mapboxgl.Map): Promise<mapboxgl.Marker[]> {
-  const markers: mapboxgl.Marker[] = [];
+export async function addPOIMarkers(pois: any[], map: mapboxgl.Map): Promise<HexagonPOISet> {
+  const markers: HexagonPOISet = new HexagonPOISet();
   // Create a container for all markers
   const markersContainer = document.createElement("div");
   markersContainer.style.zIndex = "1";
@@ -145,7 +155,12 @@ export async function addPOIMarkers(pois: any[], map: mapboxgl.Map): Promise<map
       .setLngLat([locationLng, locationLat])
       .addTo(map);
 
-    markers.push(marker);
+    markers.add({
+        placeId: poi.placeId,
+        h3Index: poi.h3Index,
+        marker,
+        poi,
+      });
     }
     return markers;
 }
