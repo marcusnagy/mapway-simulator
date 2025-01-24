@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Coordinates, POI } from '@/types/map';
 import MapTokenInput from './map/MapTokenInput';
-import MapLibreContainer from './map/MapLibreContainer';
+import MapContainer from './map/MapContainer';
 import Squares from './Squares';
 
 interface MapProps {
@@ -23,6 +23,7 @@ interface MapProps {
   setQuerying: React.Dispatch<React.SetStateAction<boolean>>;
   setQueryDone: React.Dispatch<React.SetStateAction<boolean>>;
   setHexCells: React.Dispatch<React.SetStateAction<string[]>>;
+  children?: React.ReactNode;
 }
 
 const Map = ({ 
@@ -57,6 +58,7 @@ const Map = ({
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
         setSource(`${data.longitude},${data.latitude}`);
+        // data should have latitude/longitude
         setMapSource({ lat: data.latitude, lng: data.longitude });
       } catch (e) {
         console.error('Error fetching IP location:', e);
@@ -80,15 +82,38 @@ const Map = ({
     );
   }
 
+  if (!mapboxToken) {
+    return (
+      <div className="relative w-full h-screen">
+        <Squares />
+        <div className="absolute inset-0 flex items-center justify-center">
+          Please enter a Mapbox token
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0">
-      <MapLibreContainer
+      <MapContainer
         mapboxToken={mapboxToken}
         source={source}
         destination={destination}
-        onMapLoaded={() => setIsMapLoaded(true)}
+        speed={speed}
+        isSimulating={isSimulating}
+        isCanceled={isCanceled}
+        setRouteStatus={setRouteStatus}
+        onRouteCalculated={onRouteCalculated}
+        onSimulationEnd={onSimulationEnd}
+        setIsMapLoaded={setIsMapLoaded}
         allPOIs={allPOIs}
+        setAllPOIs={setAllPOIs}
         selectedCategories={selectedCategories}
+        setSelectedCategories={setSelectedCategories}
+        setCurrentHexCollection={setCurrentHexCollection}
+        setQuerying={setQuerying}
+        setQueryDone={setQueryDone}
+        setHexCells={setHexCells}
       />
     </div>
   );
