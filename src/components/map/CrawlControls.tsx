@@ -20,16 +20,16 @@ const CrawlControls = ({
   setMaxPlaces,
 }: CrawlControlsProps) => {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col space-y-2">
       {isQuerying && (
-        <div className="text-sm text-gray-400 mb-2">
+        <div className="text-sm text-gray-400">
           <ShinyText text="Querying POIs..." speed={1.5} />
         </div>
       )}
       
-      <div className="flex items-center space-x-2">
-        <div className="w-32">
-          <Label htmlFor="maxPlaces" className="text-white text-xs">Max Places</Label>
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col">
+          <Label htmlFor="maxPlaces" className="text-white text-xs mb-1">Max Places</Label>
           <Input
             id="maxPlaces"
             type="number"
@@ -37,23 +37,25 @@ const CrawlControls = ({
             max="10"
             value={maxPlaces}
             onChange={(e) => setMaxPlaces(Number(e.target.value))}
-            className="bg-gray-900/50 border-gray-700 text-white h-8"
+            className="bg-gray-900/50 border-gray-700 text-white h-8 w-24"
           />
         </div>
-        <Button
-          onClick={() => onCrawl(maxPlaces)}
-          disabled={isCrawling}
-          className="bg-purple-500/50 hover:bg-purple-600/50 text-white h-8"
-        >
-          {isCrawling ? (
-            <>
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-              Crawling...
-            </>
-          ) : (
-            'Crawl Places'
-          )}
-        </Button>
+        <div className="flex items-end">
+          <Button
+            onClick={() => onCrawl(maxPlaces)}
+            disabled={isCrawling}
+            className="bg-purple-500/50 hover:bg-purple-600/50 text-white h-8"
+          >
+            {isCrawling ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Crawling...
+              </>
+            ) : (
+              'Crawl Places'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
