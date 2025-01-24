@@ -4,7 +4,7 @@ import { Coordinates, HexagonPOISet, POI } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
 import RouteSimulation from './RouteSimulation';
 import { latLngToCell, cellToBoundary, cellToChildren } from "h3-js";
-import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { addPOIMarkers } from '../mapui/HoverCardMarker';
 import CrawlControls from './CrawlControls';
 
@@ -54,6 +54,7 @@ const MapContainer = ({
   const { toast } = useToast();
   const [maxPlaces, setMaxPlaces] = useState(3);
   const [isCrawling, setIsCrawling] = useState(false);
+  const [routeStatus, setLocalRouteStatus] = useState<"idle" | "crawling" | "querying" | "done">("idle");
 
   const addMarkersSafely = async (pois: POI[]) => {
     const newMarkers = await addPOIMarkers(pois, map.current); // Bulk create markers
