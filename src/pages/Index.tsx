@@ -9,6 +9,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CrawlControls from "@/components/map/CrawlControls";
 
 const Index = () => {
   const [source, setSource] = useState("");
@@ -23,6 +24,8 @@ const Index = () => {
   const [allPOIs, setAllPOIs] = useState<POI[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [maxPlaces, setMaxPlaces] = useState(3);
+  const [isCrawling, setIsCrawling] = useState(false);
   const { toast } = useToast();
 
   const handleSimulate = () => {
@@ -55,6 +58,7 @@ const Index = () => {
     setIsCanceled(false);
     setSelectedCategories([]);
     setAllPOIs([]);
+    setIsCrawling(false);
     toast({
       title: "Reset Complete",
       description: "All values have been reset to their defaults.",
@@ -84,7 +88,7 @@ const Index = () => {
       return;
     }
 
-    setRouteStatus("crawling");
+    setRouteStatus("idle");
     setMapSource({ lng: sourceLng, lat: sourceLat });
     setMapDestination({ lng: destLng, lat: destLat });
   };
@@ -96,6 +100,20 @@ const Index = () => {
       description: "The route simulation has been canceled.",
     });
   }
+
+  const handleCrawl = async (maxPlaces: number) => {
+    setIsCrawling(true);
+    setRouteStatus("crawling");
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating API delay
+      setRouteStatus("querying");
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating query delay
+      setRouteStatus("done");
+    } finally {
+      setIsCrawling(false);
+    }
+  };
 
   return (
     <div className="min-h-screen relative">
@@ -175,61 +193,52 @@ const Index = () => {
 
       {/* Bottom Right Controls */}
       <div className="absolute bottom-4 right-4 space-x-4">
-        {routeStatus === "crawling" && (
-          <ShinyText
-            text="Crawling..."
-            speed={1.5}
-            className="text-xl"
+        {hasRoute && (
+          <CrawlControls
+            isCrawling={isCrawling}
+            isQuerying={routeStatus === "querying"}
+            onCrawl={handleCrawl}
+            maxPlaces={maxPlaces}
+            setMaxPlaces={setMaxPlaces}
           />
         )}
 
-        {routeStatus === "querying" && (
-          <ShinyText
-            text="Querying POIs..."
-            speed={1.5}
-            className="text-xl"
-          />
+        <Button 
+          onClick={handleReset}
+          variant="outline"
+          className="bg-red-500/50 hover:bg-red-600/50 text-white border-none"
+          disabled={isSimulating}
+        >
+          Reset
+        </Button>
+        
+        {routeStatus === "idle" && (
+          <Button 
+            onClick={handleCalculateRoute}
+            className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
+            disabled={!source || !destination || isSimulating}
+          >
+            Calculate Route
+          </Button>
+        )}
+        
+        {hasRoute && (
+          <Button 
+            onClick={handleSimulate}
+            className="bg-green-500/50 hover:bg-green-600/50 text-white"
+            disabled={isSimulating}
+          >
+            {isSimulating ? 'Simulating...' : 'Simulate'}
+          </Button>
         )}
 
-        {routeStatus !== "crawling" && routeStatus !== "querying" && (
-          <>
-            <Button 
-              onClick={handleReset}
-              variant="outline"
-              className="bg-red-500/50 hover:bg-red-600/50 text-white border-none"
-              disabled={isSimulating}
-            >
-              Reset
-            </Button>
-            {routeStatus === "idle" && (
-              <Button 
-                onClick={handleCalculateRoute}
-                className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
-                disabled={!source || !destination || isSimulating}
-              >
-                Calculate Route
-              </Button>
-            )}
-            
-            {hasRoute && (
-              <Button 
-                onClick={handleSimulate}
-                className="bg-green-500/50 hover:bg-green-600/50 text-white"
-                disabled={isSimulating}
-              >
-                {isSimulating ? 'Simulating...' : 'Simulate'}
-              </Button>
-            )}
-
-            {isSimulating && hasRoute && (
-              <Button
-                onClick={handleCancel}  
-                className="bg-red-500/50 hover:bg-red-600/50 text-white"
-              >
-                Cancel
-              </Button>
-            )}
-          </>
+        {isSimulating && hasRoute && (
+          <Button
+            onClick={handleCancel}  
+            className="bg-red-500/50 hover:bg-red-600/50 text-white"
+          >
+            Cancel
+          </Button>
         )}
       </div>
     </div>

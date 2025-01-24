@@ -6,6 +6,7 @@ import RouteSimulation from './RouteSimulation';
 import { latLngToCell, cellToBoundary, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
 import { addPOIMarkers } from '../mapui/HoverCardMarker';
+import CrawlControls from './CrawlControls';
 
 interface MapContainerProps {
   mapboxToken: string;
@@ -51,18 +52,20 @@ const MapContainer = ({
   const [currentRoute, setCurrentRoute] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [oldCategories, setOldCategories] = useState<string[]>([]);
   const { toast } = useToast();
+  const [maxPlaces, setMaxPlaces] = useState(3);
+  const [isCrawling, setIsCrawling] = useState(false);
 
   const addMarkersSafely = async (pois: POI[]) => {
     const newMarkers = await addPOIMarkers(pois, map.current); // Bulk create markers
 
     // Add the created markers to poiMarkersRef
     newMarkers.getAll().forEach((marker) => {
-    if (!poiMarkersRef.current.has(marker.placeId)) {
-      poiMarkersRef.current.add(marker);
-    } else {
-      console.warn(`Marker for POI ${marker.placeId} already exists.`);
-    }
-  });
+      if (!poiMarkersRef.current.has(marker.placeId)) {
+        poiMarkersRef.current.add(marker);
+      } else {
+        console.warn(`Marker for POI ${marker.placeId} already exists.`);
+      }
+    });
   };
 
   function simulationOnComplete() {
@@ -77,7 +80,6 @@ const MapContainer = ({
     // Use a Set to collect unique POIs
     const uniquePOIs = new Map<string, POI>();
     // Step 1: Filter the POIs based on the selected categories and existing markers
-     // Step 1: Filter POIs based on selected categories and add to uniquePOIs
     pois.forEach((poi) => {
       if (
         poi.placeId &&
@@ -125,36 +127,36 @@ const MapContainer = ({
   // Update markers when selected categories change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-    console.log('Selected categories changed:', selectedCategories);
+      console.log('Selected categories changed:', selectedCategories);
 
-    // If there are no selected categories, remove all POI markers
-    if (selectedCategories.length === 0) {
-      console.log('No categories selected, removing all markers');
-      poiMarkersRef.current.getAll().forEach((hexPoi) => hexPoi.marker.remove());
-      poiMarkersRef.current = new HexagonPOISet();
-      setOldCategories([]);
-      return;
-    }
+      // If there are no selected categories, remove all POI markers
+      if (selectedCategories.length === 0) {
+        console.log('No categories selected, removing all markers');
+        poiMarkersRef.current.getAll().forEach((hexPoi) => hexPoi.marker.remove());
+        poiMarkersRef.current = new HexagonPOISet();
+        setOldCategories([]);
+        return;
+      }
 
-    // Step 2: Collect all POIs for the selected categories
-    const relevantPOIs = allPOIs.filter((poi) =>
-      poi.categories?.some((cat) => selectedCategories.includes(cat))
-    );
+      // Step 2: Collect all POIs for the selected categories
+      const relevantPOIs = allPOIs.filter((poi) =>
+        poi.categories?.some((cat) => selectedCategories.includes(cat))
+      );
 
-    // Step 3: Add markers for unique POIs
-    addMarkersByCategory(relevantPOIs, selectedCategories);
+      // Step 3: Add markers for unique POIs
+      addMarkersByCategory(relevantPOIs, selectedCategories);
 
-    // Remove markers for categories that got turned off
-    // Categories removed
-    const removedCategories = oldCategories.filter((cat) => !selectedCategories.includes(cat));
-    if (removedCategories.length > 0) {
-      console.log("Removing markers for categories:", removedCategories);
-      removeMarkersByCategory(removedCategories);
-    }
+      // Remove markers for categories that got turned off
+      // Categories removed
+      const removedCategories = oldCategories.filter((cat) => !selectedCategories.includes(cat));
+      if (removedCategories.length > 0) {
+        console.log("Removing markers for categories:", removedCategories);
+        removeMarkersByCategory(removedCategories);
+      }
 
-    setOldCategories(selectedCategories);
-  }, 200);
-  return () => clearTimeout(timeoutId);
+      setOldCategories(selectedCategories);
+    }, 200);
+    return () => clearTimeout(timeoutId);
   }, [selectedCategories, allPOIs]);
 
   // Clear existing route and markers
@@ -298,10 +300,10 @@ const MapContainer = ({
         .setLngLat([destination.lng, destination.lat])
         .addTo(map.current);
       
-       map.current.flyTo({
-          center: [source.lng, source.lat],
-          zoom: 12,
-        });
+      map.current.flyTo({
+        center: [source.lng, source.lat],
+        zoom: 12,
+      });
     } else {
       console.log('No destination marker');
     }
@@ -330,28 +332,28 @@ const MapContainer = ({
       }
 
       // Add route to the map
-    map.current.addSource('route', {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {},
-        geometry: route,
-      },
-    });
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: route,
+        },
+      });
 
-    map.current.addLayer({
-      id: 'route',
-      type: 'line',
-      source: 'route',
-      layout: {
-      'line-join': 'round',
-      'line-cap': 'round',
-      },
-      paint: {
-      'line-color': '#FF6600', // Neon orange color
-      'line-width': 6,
-      },
-    });
+      map.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': '#FF6600', // Neon orange color
+          'line-width': 6,
+        },
+      });
 
       setCurrentRoute(
         {
@@ -377,75 +379,74 @@ const MapContainer = ({
       
       // Convert route coords ([lng, lat]) to hex polygons
       route.coordinates.forEach(([lng, lat]) => {
-      const h3Index = latLngToCell(lat, lng, 7);
-      if (hexCells.current.includes(h3Index)) return;
-      hexCells.current.push(h3Index);
+        const h3Index = latLngToCell(lat, lng, 7);
+        if (hexCells.current.includes(h3Index)) return;
+        hexCells.current.push(h3Index);
 
-      const boundary = cellToBoundary(h3Index, true); // [[lat, lng], ...]
-      console.log('Adding hexagon:', h3Index, boundary);
-      const polygon: GeoJSON.Feature<GeoJSON.Polygon> = {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'Polygon',
-          coordinates: [
-            boundary,
-          ],
-        },
-      };
+        const boundary = cellToBoundary(h3Index, true); // [[lat, lng], ...]
+        console.log('Adding hexagon:', h3Index, boundary);
+        const polygon: GeoJSON.Feature<GeoJSON.Polygon> = {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              boundary,
+            ],
+          },
+        };
         console.log('Adding hexagon:', polygon);
         hexCollection.features.push(polygon);
       });
 
       // Add or update the hexagons source & layer
-    if (!map.current.getSource('hexagons')) {
-      console.log('Adding hexagons source and layer');
-      map.current.addSource('hexagons', {
-        type: 'geojson',
-        data: hexCollection,
-      });
-      map.current.addLayer({
-        id: 'hexagons-layer',
-        type: 'fill',
-        source: 'hexagons',
-        paint: {
-          'fill-color': '#808080', // A medium grey color
-          'fill-opacity': 0.2, // Lower opacity for better visibility of the map
-        },
-      }, 'route');
-      map.current.addLayer({
-        id: 'hexagons-outline',
-        type: 'line',
-        source: 'hexagons',
-        layout: {},
-        paint: {
-          'line-color': '#000000', // Black color for the outline
-          'line-width': 1, // Width of the outline
-        },
-      });
-    } else {
-      (map.current.getSource('hexagons') as mapboxgl.GeoJSONSource).setData(hexCollection);
-    }
-    setRouteStatus("querying");
-
-    // Fetch POI data for the visited cells
-    const poiData = await fetchPOIData(hexCells.current);
-    const categories: Set<string> = new Set();
-    if (poiData && map.current) {
-      setAllPOIs(poiData.pois);
-      for (const poi of poiData.pois) {
-        if (poi.categories) {
-          poi.categories.forEach((cat: string) => categories.add(cat));
-          
-        }
+      if (!map.current.getSource('hexagons')) {
+        console.log('Adding hexagons source and layer');
+        map.current.addSource('hexagons', {
+          type: 'geojson',
+          data: hexCollection,
+        });
+        map.current.addLayer({
+          id: 'hexagons-layer',
+          type: 'fill',
+          source: 'hexagons',
+          paint: {
+            'fill-color': '#808080', // A medium grey color
+            'fill-opacity': 0.2, // Lower opacity for better visibility of the map
+          },
+        }, 'route');
+        map.current.addLayer({
+          id: 'hexagons-outline',
+          type: 'line',
+          source: 'hexagons',
+          layout: {},
+          paint: {
+            'line-color': '#000000', // Black color for the outline
+            'line-width': 1, // Width of the outline
+          },
+        });
+      } else {
+        (map.current.getSource('hexagons') as mapboxgl.GeoJSONSource).setData(hexCollection);
       }
-      console.log('Categories:', categories);
-      setSelectedCategories(Array.from(categories));
-    }
+      setRouteStatus("querying");
+
+      // Fetch POI data for the visited cells
+      const poiData = await fetchPOIData(hexCells.current);
+      const categories: Set<string> = new Set();
+      if (poiData && map.current) {
+        setAllPOIs(poiData.pois);
+        for (const poi of poiData.pois) {
+          if (poi.categories) {
+            poi.categories.forEach((cat: string) => categories.add(cat));
+          }
+        }
+        console.log('Categories:', categories);
+        setSelectedCategories(Array.from(categories));
+      }
 
       setRouteStatus("crawling");
       // Send hexagons to the backend
-      await sendHexRequest(hexCollection);
+      await sendHexRequest(hexCollection, maxPlaces);
 
       setRouteStatus("querying");
 
@@ -456,28 +457,27 @@ const MapContainer = ({
       if (newPoiData && map.current) {
         // Merge newly fetched POIs into existing state
         setAllPOIs((prev) => {
-        const merged = [...prev];
-        newPoiData.pois.forEach((poi: POI) => {
-          // If we don't have it yet, add to merged
-          if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
-            merged.push(poi);
-            newPois.push(poi);
+          const merged = [...prev];
+          newPoiData.pois.forEach((poi: POI) => {
+            // If we don't have it yet, add to merged
+            if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
+              merged.push(poi);
+              newPois.push(poi);
+            }
+          });
+          return merged;
+        });
+        // Only add new markers in selected categories
+        newPois.forEach(async (poi) => {
+          if (
+            !poi.categories?.some((cat) => selectedCategories.includes(cat))
+          ) {
+            poi.categories.forEach((cat: string) => categories.add(cat));
           }
         });
-        return merged;
-      });
-      // Only add new markers in selected categories
-      newPois.forEach(async (poi) => {
-        if (
-          !poi.categories?.some((cat) => selectedCategories.includes(cat))
-        ) {
-          poi.categories.forEach((cat: string) => categories.add(cat));
-          
+        if (newPois.length > 0) {
+          setSelectedCategories(Array.from(categories));
         }
-      });
-      if (newPois.length > 0) {
-        setSelectedCategories(Array.from(categories));
-      }
       }
       setRouteStatus("done");
 
@@ -561,6 +561,24 @@ const MapContainer = ({
           onComplete={simulationOnComplete}
         />
       )}
+      <CrawlControls
+        isCrawling={isCrawling}
+        isQuerying={routeStatus === "querying"}
+        onCrawl={async (maxPlaces) => {
+          setIsCrawling(true);
+          setRouteStatus("crawling");
+          try {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating API delay
+            setRouteStatus("querying");
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating query delay
+            setRouteStatus("done");
+          } finally {
+            setIsCrawling(false);
+          }
+        }}
+        maxPlaces={maxPlaces}
+        setMaxPlaces={setMaxPlaces}
+      />
     </div>
   );
 }
@@ -579,7 +597,7 @@ async function fetchPOIData(visitedCells: string[]) {
   return data;
 };
 
-async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>) {
+async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>, maxPlaces: number = 3) {
   // Transform each polygon feature into the API’s MultiPolygon format
   const polygons = hexCollection.features.map((feature) => {
     // Each feature.geometry.coordinates is [ [ [lng, lat], [lng, lat], ...] ]
@@ -593,7 +611,7 @@ async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.P
   console.log('Sending hex request:', polygons);
 
   const body = {
-    maxCrawledPlacesPerSearch:3,
+    maxCrawledPlacesPerSearch: maxPlaces,
     customGeolocation: {
       type: "MULTIPOLYGON",
       polygons: polygons,
