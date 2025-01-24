@@ -4,12 +4,12 @@ import { Label } from "@/components/ui/label";
 import Map from "@/components/Map";
 import { useState } from "react";
 import { Coordinates, POI } from "@/types/map";
-import { ShinyText } from "@/components/mapui/ShinyText";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CrawlControls from "@/components/map/CrawlControls";
+import { fetchAndMergePOIs, sendHexRequest } from "@/components/map/MapContainer";
 
 const Index = () => {
   const [source, setSource] = useState("");
@@ -26,6 +26,11 @@ const Index = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [maxPlaces, setMaxPlaces] = useState(3);
   const [isCrawling, setIsCrawling] = useState(false);
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [crawlDone, setCrawlDone] = useState(false);
+  const [queryDone, setQueryDone] = useState(false);
+  const [currentHexCollection, setCurrentHexCollection] = useState<GeoJSON.FeatureCollection<GeoJSON.Polygon>>(null);
+  const [hexCells, setHexCells] = useState<string[]>([])
   const { toast } = useToast();
 
   const handleSimulate = () => {
@@ -50,7 +55,6 @@ const Index = () => {
     setSource("");
     setDestination("");
     setSpeed("60");
-    setRouteStatus("idle");
     setHasRoute(false);
     setIsSimulating(false);
     setMapSource(null);
@@ -59,6 +63,12 @@ const Index = () => {
     setSelectedCategories([]);
     setAllPOIs([]);
     setIsCrawling(false);
+    setIsQuerying(false);
+    setMaxPlaces(3);
+    setCurrentHexCollection(null);
+    setQueryDone(false);
+    setCrawlDone(false);
+    setHexCells([]);
     toast({
       title: "Reset Complete",
       description: "All values have been reset to their defaults.",
@@ -87,8 +97,6 @@ const Index = () => {
       });
       return;
     }
-
-    setRouteStatus("idle");
     setMapSource({ lng: sourceLng, lat: sourceLat });
     setMapDestination({ lng: destLng, lat: destLat });
   };
@@ -102,16 +110,23 @@ const Index = () => {
   }
 
   const handleCrawl = async (maxPlaces: number) => {
-    setIsCrawling(true);
-    setRouteStatus("crawling");
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating API delay
-      setRouteStatus("querying");
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating query delay
-      setRouteStatus("done");
+      setIsCrawling(true);
+      await sendHexRequest(currentHexCollection,maxPlaces);
+
+      setIsCrawling(false);
+      setCrawlDone(true);
+      setTimeout(() => setCrawlDone(false), 5000); // Show "done" state for 5 seconds
+
+      setIsQuerying(true);
+      await fetchAndMergePOIs(hexCells, setAllPOIs, selectedCategories, setSelectedCategories);
+      setIsQuerying(false);
+      setQueryDone(true);
+      setTimeout(() => setQueryDone(false), 3000); // Show "done" state for 3 seconds
+
     } finally {
       setIsCrawling(false);
+      setIsQuerying(false);
     }
   };
 
@@ -140,6 +155,10 @@ const Index = () => {
         setAllPOIs={setAllPOIs}
         selectedCategories={selectedCategories}
         setSelectedCategories={setSelectedCategories}
+        setCurrentHexCollection={setCurrentHexCollection}
+        setQuerying={setIsQuerying}
+        setQueryDone={setQueryDone}
+        setHexCells={setHexCells}
       />
       
       {/* Collapsible Controls Panel */}
@@ -191,18 +210,23 @@ const Index = () => {
         </Collapsible>
       </div>
 
-      {/* Bottom Right Controls */}
-      <div className="absolute bottom-4 right-4 space-x-4">
+      {/* Bottom Left Controls */}
+      <div className="absolute bottom-12 left-4 space-x-4">
         {hasRoute && (
           <CrawlControls
-            isCrawling={isCrawling}
-            isQuerying={routeStatus === "querying"}
-            onCrawl={handleCrawl}
-            maxPlaces={maxPlaces}
-            setMaxPlaces={setMaxPlaces}
+        isCrawling={isCrawling}
+        isQuerying={isQuerying}
+        crawlDone={crawlDone}
+        queryDone={queryDone}
+        onCrawl={handleCrawl}
+        maxPlaces={maxPlaces}
+        setMaxPlaces={setMaxPlaces}
           />
         )}
+      </div>
 
+      {/* Bottom Right Controls */}
+      <div className="absolute bottom-4 right-4 space-x-4">
         <Button 
           onClick={handleReset}
           variant="outline"
@@ -214,30 +238,30 @@ const Index = () => {
         
         {routeStatus === "idle" && (
           <Button 
-            onClick={handleCalculateRoute}
-            className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
-            disabled={!source || !destination || isSimulating}
+        onClick={handleCalculateRoute}
+        className="bg-blue-500/50 hover:bg-blue-600/50 text-white"
+        disabled={!source || !destination || isSimulating}
           >
-            Calculate Route
+        Calculate Route
           </Button>
         )}
         
         {hasRoute && (
           <Button 
-            onClick={handleSimulate}
-            className="bg-green-500/50 hover:bg-green-600/50 text-white"
-            disabled={isSimulating}
+        onClick={handleSimulate}
+        className="bg-green-500/50 hover:bg-green-600/50 text-white"
+        disabled={isSimulating}
           >
-            {isSimulating ? 'Simulating...' : 'Simulate'}
+        {isSimulating ? 'Simulating...' : 'Simulate'}
           </Button>
         )}
 
         {isSimulating && hasRoute && (
           <Button
-            onClick={handleCancel}  
-            className="bg-red-500/50 hover:bg-red-600/50 text-white"
+        onClick={handleCancel}  
+        className="bg-red-500/50 hover:bg-red-600/50 text-white"
           >
-            Cancel
+        Cancel
           </Button>
         )}
       </div>

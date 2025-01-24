@@ -19,6 +19,10 @@ interface MapProps {
   setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>;
   selectedCategories: string[];
   setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
+  setCurrentHexCollection?: React.Dispatch<React.SetStateAction<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>>;
+  setQuerying: React.Dispatch<React.SetStateAction<boolean>>;
+  setQueryDone: React.Dispatch<React.SetStateAction<boolean>>;
+  setHexCells: React.Dispatch<React.SetStateAction<string[]>>;
   children?: React.ReactNode;
 }
 
@@ -37,6 +41,10 @@ const Map = ({
   setAllPOIs,
   selectedCategories,
   setSelectedCategories,
+  setCurrentHexCollection,
+  setQuerying,
+  setQueryDone,
+  setHexCells,
 }: MapProps) => {
   const [mapboxToken, setMapboxToken] = useState('');
   const [isMapInitialized, setIsMapInitialized] = useState(false);
@@ -102,6 +110,10 @@ const Map = ({
         setAllPOIs={setAllPOIs}
         selectedCategories={selectedCategories}
         setSelectedCategories={setSelectedCategories}
+        setCurrentHexCollection={setCurrentHexCollection}
+        setQuerying={setQuerying}
+        setQueryDone={setQueryDone}
+        setHexCells={setHexCells}
       />
     </div>
   );

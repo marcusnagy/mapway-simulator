@@ -6,7 +6,7 @@ import RouteSimulation from './RouteSimulation';
 import { latLngToCell, cellToBoundary, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { addPOIMarkers } from '../mapui/HoverCardMarker';
-import CrawlControls from './CrawlControls';
+import { set } from 'date-fns';
 
 interface MapContainerProps {
   mapboxToken: string;
@@ -23,6 +23,10 @@ interface MapContainerProps {
   setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>;
   selectedCategories: string[];
   setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>;
+  setCurrentHexCollection?: React.Dispatch<React.SetStateAction<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>>;
+  setQuerying?: React.Dispatch<React.SetStateAction<boolean>>;
+  setQueryDone?: React.Dispatch<React.SetStateAction<boolean>>;
+  setHexCells?: React.Dispatch<React.SetStateAction<string[]>>;
   children?: React.ReactNode;
 }
 
@@ -41,6 +45,10 @@ const MapContainer = ({
   setAllPOIs,
   selectedCategories,
   setSelectedCategories,
+  setCurrentHexCollection,
+  setQuerying,
+  setQueryDone,
+  setHexCells,
 }: MapContainerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -52,9 +60,6 @@ const MapContainer = ({
   const [currentRoute, setCurrentRoute] = useState<GeoJSON.Feature<GeoJSON.LineString> | null>(null);
   const [oldCategories, setOldCategories] = useState<string[]>([]);
   const { toast } = useToast();
-  const [maxPlaces, setMaxPlaces] = useState(3);
-  const [isCrawling, setIsCrawling] = useState(false);
-  const [routeStatus, setLocalRouteStatus] = useState<"idle" | "crawling" | "querying" | "done">("idle");
 
   const addMarkersSafely = async (pois: POI[]) => {
     const newMarkers = await addPOIMarkers(pois, map.current); // Bulk create markers
@@ -400,6 +405,8 @@ const MapContainer = ({
         hexCollection.features.push(polygon);
       });
 
+      setHexCells(hexCells.current);
+
       // Add or update the hexagons source & layer
       if (!map.current.getSource('hexagons')) {
         console.log('Adding hexagons source and layer');
@@ -429,8 +436,12 @@ const MapContainer = ({
       } else {
         (map.current.getSource('hexagons') as mapboxgl.GeoJSONSource).setData(hexCollection);
       }
-      setRouteStatus("querying");
 
+      onRouteCalculated();
+
+      setCurrentHexCollection?.(hexCollection);
+
+      setQuerying?.(true);
       // Fetch POI data for the visited cells
       const poiData = await fetchPOIData(hexCells.current);
       const categories: Set<string> = new Set();
@@ -445,44 +456,9 @@ const MapContainer = ({
         setSelectedCategories(Array.from(categories));
       }
 
-      setRouteStatus("crawling");
-      // Send hexagons to the backend
-      await sendHexRequest(hexCollection, maxPlaces);
-
-      setRouteStatus("querying");
-
-      // After crawling, fetch more POIs
-      const newPoiData = await fetchPOIData(hexCells.current);
-      const newPois: POI[] = [];
-      // Fetch POI data for the visited cells
-      if (newPoiData && map.current) {
-        // Merge newly fetched POIs into existing state
-        setAllPOIs((prev) => {
-          const merged = [...prev];
-          newPoiData.pois.forEach((poi: POI) => {
-            // If we don't have it yet, add to merged
-            if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
-              merged.push(poi);
-              newPois.push(poi);
-            }
-          });
-          return merged;
-        });
-        // Only add new markers in selected categories
-        newPois.forEach(async (poi) => {
-          if (
-            !poi.categories?.some((cat) => selectedCategories.includes(cat))
-          ) {
-            poi.categories.forEach((cat: string) => categories.add(cat));
-          }
-        });
-        if (newPois.length > 0) {
-          setSelectedCategories(Array.from(categories));
-        }
-      }
-      setRouteStatus("done");
-
-      onRouteCalculated();
+      setQuerying?.(false);
+      setQueryDone?.(true);
+      setTimeout(() => setQueryDone(false), 3000); // Show "done" state for 10 seconds
       toast({
         title: "Success",
         description: "Route calculated successfully",
@@ -562,29 +538,46 @@ const MapContainer = ({
           onComplete={simulationOnComplete}
         />
       )}
-      <CrawlControls
-        isCrawling={isCrawling}
-        isQuerying={routeStatus === "querying"}
-        onCrawl={async (maxPlaces) => {
-          setIsCrawling(true);
-          setRouteStatus("crawling");
-          try {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating API delay
-            setRouteStatus("querying");
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating query delay
-            setRouteStatus("done");
-          } finally {
-            setIsCrawling(false);
-          }
-        }}
-        maxPlaces={maxPlaces}
-        setMaxPlaces={setMaxPlaces}
-      />
     </div>
   );
 }
 
 export default MapContainer;
+
+
+export async function fetchAndMergePOIs(
+  hexCells: string[],
+  setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>,
+  selectedCategories: string[],
+  setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>
+) {
+  const newPoiData = await fetchPOIData(hexCells);
+  const newPois: POI[] = [];
+  const categories: Set<string> = new Set();
+
+  if (newPoiData) {
+    setAllPOIs((prev) => {
+      const merged = [...prev];
+      newPoiData.pois.forEach((poi: POI) => {
+        if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
+          merged.push(poi);
+          newPois.push(poi);
+        }
+      });
+      return merged;
+    });
+
+    newPois.forEach((poi) => {
+      if (!poi.categories?.some((cat) => selectedCategories.includes(cat))) {
+        poi.categories.forEach((cat: string) => categories.add(cat));
+      }
+    });
+
+    if (newPois.length > 0) {
+      setSelectedCategories(Array.from(categories));
+    }
+  }
+}
 
 async function fetchPOIData(visitedCells: string[]) {
   const cells = [...visitedCells];
@@ -598,7 +591,7 @@ async function fetchPOIData(visitedCells: string[]) {
   return data;
 };
 
-async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>, maxPlaces: number = 3) {
+export async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>, maxPlaces: number = 3) {
   // Transform each polygon feature into the API’s MultiPolygon format
   const polygons = hexCollection.features.map((feature) => {
     // Each feature.geometry.coordinates is [ [ [lng, lat], [lng, lat], ...] ]
