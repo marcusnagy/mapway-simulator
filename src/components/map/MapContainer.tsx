@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { Coordinates, HexagonPOI, HexagonPOISet, POI } from '@/types/map';
+import { Coordinates, HexagonPOISet, POI } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
 import RouteSimulation from './RouteSimulation';
-import { latLngToCell, cellToBoundary, h3IndexToSplitLong, cellToParent, cellToChildren } from "h3-js";
+import { latLngToCell, cellToBoundary, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css'; // Import Mapbox CSS needed for the markers.
-import { addPOIMarkers, createPOIMarker } from '../mapui/HoverCardMarker';
-import { set } from 'date-fns';
+import { addPOIMarkers } from '../mapui/HoverCardMarker';
 
 interface MapContainerProps {
   mapboxToken: string;
