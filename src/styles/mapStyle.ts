@@ -1,5 +1,5 @@
 export const darkMapStyle = {
-  version: 8,
+  version: 8 as const,
   name: 'Dark GTA Style',
   sources: {
     'maplibre-streets': {
@@ -51,7 +51,7 @@ export const darkMapStyle = {
 
 export const poiLayerStyle = {
   id: 'poi-clusters',
-  type: 'circle',
+  type: 'circle' as const,
   source: 'pois',
   filter: ['has', 'point_count'],
   paint: {
@@ -78,7 +78,7 @@ export const poiLayerStyle = {
 
 export const poiLabelsStyle = {
   id: 'poi-labels',
-  type: 'symbol',
+  type: 'symbol' as const,
   source: 'pois',
   filter: ['!', ['has', 'point_count']],
   layout: {

@@ -5,6 +5,7 @@ import { latLngToCell } from 'h3-js';
 import { darkMapStyle, poiLayerStyle, poiLabelsStyle } from '@/styles/mapStyle';
 import { Coordinates, POI } from '@/types/map';
 import { useToast } from "@/hooks/use-toast";
+import type { Feature, Geometry } from 'geojson';
 
 interface MapLibreContainerProps {
   mapboxToken: string;
@@ -33,7 +34,7 @@ const MapLibreContainer = ({
     try {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: darkMapStyle,
+        style: darkMapStyle as maplibregl.StyleSpecification,
         center: [0, 0],
         zoom: 2,
         maxZoom: 18
@@ -68,11 +69,11 @@ const MapLibreContainer = ({
       poi.categories?.some(cat => selectedCategories.includes(cat))
     );
 
-    const features = filteredPOIs.map(poi => ({
-      type: 'Feature',
+    const features: Feature[] = filteredPOIs.map(poi => ({
+      type: "Feature",
       geometry: {
-        type: 'Point',
-        coordinates: [poi.locationLng, poi.locationLat]
+        type: "Point",
+        coordinates: [poi.locationLng!, poi.locationLat!]
       },
       properties: {
         id: poi.placeId,
@@ -101,8 +102,51 @@ const MapLibreContainer = ({
         clusterRadius: 50
       });
 
-      map.current.addLayer(poiLayerStyle);
-      map.current.addLayer(poiLabelsStyle);
+      map.current.addLayer({
+        id: 'poi-clusters',
+        type: 'circle',
+        source: 'pois',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': [
+            'step',
+            ['get', 'point_count'],
+            '#51bbd6',
+            100,
+            '#f1f075',
+            750,
+            '#f28cb1'
+          ],
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            20,
+            100,
+            30,
+            750,
+            40
+          ]
+        }
+      } as maplibregl.CircleLayerSpecification);
+
+      map.current.addLayer({
+        id: 'poi-labels',
+        type: 'symbol',
+        source: 'pois',
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'text-field': ['get', 'title'],
+          'text-font': ['Open Sans Regular'],
+          'text-size': 12,
+          'text-offset': [0, 0.6],
+          'text-anchor': 'top'
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1
+        }
+      } as maplibregl.SymbolLayerSpecification);
     }
   }, [allPOIs, selectedCategories]);
 
