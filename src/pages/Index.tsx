@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CrawlControls from "@/components/map/CrawlControls";
-import { fetchAndMergePOIs, sendHexRequest } from "@/components/map/MapContainer";
+import { fetchAndMergePOIs, sendHexRequest } from "@/lib/utils";
 
 const Index = () => {
   const [source, setSource] = useState("");

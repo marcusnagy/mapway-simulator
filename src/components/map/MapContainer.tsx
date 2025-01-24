@@ -6,7 +6,8 @@ import RouteSimulation from './RouteSimulation';
 import { latLngToCell, cellToBoundary, cellToChildren } from "h3-js";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { addPOIMarkers } from '../mapui/HoverCardMarker';
-import { set } from 'date-fns';
+import { fetchPOIData } from "@/lib/utils"
+
 
 interface MapContainerProps {
   mapboxToken: string;
@@ -446,8 +447,8 @@ const MapContainer = ({
       const poiData = await fetchPOIData(hexCells.current);
       const categories: Set<string> = new Set();
       if (poiData && map.current) {
-        setAllPOIs(poiData.pois);
-        for (const poi of poiData.pois) {
+        setAllPOIs(poiData);
+        for (const poi of poiData) {
           if (poi.categories) {
             poi.categories.forEach((cat: string) => categories.add(cat));
           }
@@ -545,83 +546,3 @@ const MapContainer = ({
 export default MapContainer;
 
 
-export async function fetchAndMergePOIs(
-  hexCells: string[],
-  setAllPOIs: React.Dispatch<React.SetStateAction<POI[]>>,
-  selectedCategories: string[],
-  setSelectedCategories: React.Dispatch<React.SetStateAction<string[]>>
-) {
-  const newPoiData = await fetchPOIData(hexCells);
-  const newPois: POI[] = [];
-  const categories: Set<string> = new Set();
-
-  if (newPoiData) {
-    setAllPOIs((prev) => {
-      const merged = [...prev];
-      newPoiData.pois.forEach((poi: POI) => {
-        if (poi.placeId && !merged.some((p) => p.placeId === poi.placeId)) {
-          merged.push(poi);
-          newPois.push(poi);
-        }
-      });
-      return merged;
-    });
-
-    newPois.forEach((poi) => {
-      if (!poi.categories?.some((cat) => selectedCategories.includes(cat))) {
-        poi.categories.forEach((cat: string) => categories.add(cat));
-      }
-    });
-
-    if (newPois.length > 0) {
-      setSelectedCategories(Array.from(categories));
-    }
-  }
-}
-
-async function fetchPOIData(visitedCells: string[]) {
-  const cells = [...visitedCells];
-  const queryString = cells.map((cell) => `parentCells=${encodeURIComponent(cell)}`).join('&');
-  const res = await fetch(`/v1/poi/h3?${queryString}`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch POI data. Status: ${res.status}`);
-  }
-  const data = await res.json();
-  console.log('POI data:', data);
-  return data;
-};
-
-export async function sendHexRequest(hexCollection: GeoJSON.FeatureCollection<GeoJSON.Polygon>, maxPlaces: number = 3) {
-  // Transform each polygon feature into the API’s MultiPolygon format
-  const polygons = hexCollection.features.map((feature) => {
-    // Each feature.geometry.coordinates is [ [ [lng, lat], [lng, lat], ...] ]
-    const coordsArray = feature.geometry.coordinates[0].map(([lng, lat]) => ({
-      longitude: lng,
-      latitude: lat,
-    }))
-    return { coordinates: coordsArray }
-  })
-
-  console.log('Sending hex request:', polygons);
-
-  const body = {
-    maxCrawledPlacesPerSearch: maxPlaces,
-    customGeolocation: {
-      type: "MULTIPOLYGON",
-      polygons: polygons,
-    },
-    allPlacesNoSearchAction: "ALL_PLACES_NO_SEARCH_OCR"
-    // ...fill out other fields as needed
-  };
-
-  const res = await fetch("/v1/maps/search/scraper", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  console.log('Hex request response:', res);
-  if (!res.ok) {
-    throw new Error(`Failed to send hex request. Status: ${res.status}`);
-  }
-}
