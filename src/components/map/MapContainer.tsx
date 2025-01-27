@@ -536,7 +536,7 @@ const MapContainer = ({
           type: 'fill-extrusion',
           source: 'hexagons',
           paint: {
-            'fill-color': '#808080', // A medium grey color
+            'fill-extrusion-color': '#808080', // A medium grey color
             'fill-extrusion-height': ['get', 'height'], // Use height property
             'fill-extrusion-base': ['get', 'base_height'], // Use base height property
             'fill-extrusion-opacity': 0.75 // Slight transparency for a glowing effect
