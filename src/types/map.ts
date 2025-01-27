@@ -45,6 +45,13 @@ export class HexagonPOISet {
   getWithinH3Indexes(h3Indexes: string[]): HexagonPOI[] {
     return this.getAll().filter((poi) => h3Indexes.includes(poi.h3Index));
   }
+
+  clear(): void {
+    // Remove all markers from the map
+    this.getAll().forEach(poi => poi.marker.remove());
+    // Clear the internal map
+    this.poiMap.clear();
+  }
 }
 
 export function findPOIByPlaceId(pois: HexagonPOI[], placeId: string): HexagonPOI[] {

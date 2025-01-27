@@ -63,7 +63,7 @@ const MapContainer = ({
   const { toast } = useToast();
 
   const addMarkersSafely = async (pois: POI[]) => {
-    const newMarkers = await addPOIMarkers(pois, map.current); // Bulk create markers
+    const newMarkers = await addPOIMarkers(pois, map.current, selectedCategories); // Bulk create markers
 
     // Add the created markers to poiMarkersRef
     newMarkers.getAll().forEach((marker) => {
@@ -131,50 +131,125 @@ const MapContainer = ({
     }
   }
 
-  // Update markers when selected categories change
+  // Update POI markers when categories or POIs change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      console.log('Selected categories changed:', selectedCategories);
+    if (!map.current || !map.current.loaded()) return;
 
-      // If there are no selected categories, remove all POI markers
-      if (selectedCategories.length === 0) {
-        console.log('No categories selected, removing all markers');
-        poiMarkersRef.current.getAll().forEach((hexPoi) => hexPoi.marker.remove());
+    let isUpdating = false;
+    const updatePOIMarkers = async () => {
+      if (isUpdating) return;
+      isUpdating = true;
+
+      try {
+        // Clean up existing markers and their DOM elements
+        if (poiMarkersRef.current) {
+          poiMarkersRef.current.getAll().forEach(hexPoi => {
+            if (hexPoi.marker) {
+              hexPoi.marker.remove();
+              const el = hexPoi.marker.getElement();
+              if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+              }
+            }
+          });
+        }
+
+        // Create new HexagonPOISet
         poiMarkersRef.current = new HexagonPOISet();
-        setOldCategories([]);
-        return;
+
+        // If no categories are selected, remove all layers and sources
+        if (selectedCategories.length === 0) {
+          ['clusters', 'clusters-glow', 'cluster-count'].forEach(layerId => {
+            if (map.current?.getLayer(layerId)) {
+              map.current.removeLayer(layerId);
+            }
+          });
+          if (map.current.getSource('pois')) {
+            map.current.removeSource('pois');
+          }
+          return;
+        }
+
+        // Only add new markers if we have POIs
+        if (allPOIs.length > 0) {
+          // Update the source data instead of removing and recreating layers
+          const source = map.current.getSource('pois') as mapboxgl.GeoJSONSource;
+          if (source) {
+            // Convert POIs to GeoJSON
+            const geojsonData: GeoJSON.FeatureCollection = {
+              type: 'FeatureCollection',
+              features: allPOIs
+                .filter(poi => 
+                  poi.categories?.some(category => selectedCategories.includes(category))
+                )
+                .map(poi => ({
+                  type: 'Feature',
+                  geometry: {
+                    type: 'Point',
+                    coordinates: [poi.locationLng, poi.locationLat]
+                  },
+                  properties: { ...poi }
+                }))
+            };
+            
+            // Update the source data
+            source.setData(geojsonData);
+          } else {
+            // If source doesn't exist, create it along with layers
+            poiMarkersRef.current = await addPOIMarkers(allPOIs, map.current, selectedCategories);
+          }
+        }
+      } finally {
+        isUpdating = false;
       }
+    };
 
-      // Step 2: Collect all POIs for the selected categories
-      const relevantPOIs = allPOIs.filter((poi) =>
-        poi.categories?.some((cat) => selectedCategories.includes(cat))
-      );
+    const timeoutId = setTimeout(updatePOIMarkers, 100);
 
-      // Step 3: Add markers for unique POIs
-      addMarkersByCategory(relevantPOIs, selectedCategories);
+    return () => {
+      clearTimeout(timeoutId);
+      if (map.current) {
+        // Only clean up markers, preserve layers and sources unless no categories selected
+        if (poiMarkersRef.current) {
+          poiMarkersRef.current.getAll().forEach(hexPoi => {
+            if (hexPoi.marker) {
+              hexPoi.marker.remove();
+              const el = hexPoi.marker.getElement();
+              if (el && el.parentNode) {
+                el.parentNode.removeChild(el);
+              }
+            }
+          });
+          poiMarkersRef.current = new HexagonPOISet();
+        }
 
-      // Remove markers for categories that got turned off
-      // Categories removed
-      const removedCategories = oldCategories.filter((cat) => !selectedCategories.includes(cat));
-      if (removedCategories.length > 0) {
-        console.log("Removing markers for categories:", removedCategories);
-        removeMarkersByCategory(removedCategories);
+        // If no categories selected, also remove layers and sources
+        if (selectedCategories.length === 0) {
+          ['clusters', 'clusters-glow', 'cluster-count'].forEach(layerId => {
+            if (map.current?.getLayer(layerId)) {
+              map.current.removeLayer(layerId);
+            }
+          });
+          if (map.current.getSource('pois')) {
+            map.current.removeSource('pois');
+          }
+        }
       }
-
-      setOldCategories(selectedCategories);
-    }, 200);
-    return () => clearTimeout(timeoutId);
-  }, [selectedCategories, allPOIs]);
+    };
+  }, [allPOIs, selectedCategories]);
 
   // Clear existing route and markers
   const clearRouteAndMarkers = () => {
     if (map.current) {
+      // Remove route layers and sources
       if (map.current.getLayer('route')) {
         map.current.removeLayer('route');
       }
       if (map.current.getSource('route')) {
         map.current.removeSource('route');
       }
+
+      // Remove hexagon layers and sources
       if (map.current.getLayer('hexagons-layer')) {
         map.current.removeLayer('hexagons-layer');
       }
@@ -184,12 +259,50 @@ const MapContainer = ({
       if (map.current.getSource('hexagons')) {
         map.current.removeSource('hexagons');
       }
-      poiMarkersRef.current.getAll().forEach(hexPoi => hexPoi.marker.remove());
+
+      // Remove cluster layers and sources
+      if (map.current.getLayer('clusters')) {
+        map.current.removeLayer('clusters');
+      }
+      if (map.current.getLayer('cluster-count')) {
+        map.current.removeLayer('cluster-count');
+      }
+      if (map.current.getLayer('clusters-glow')) {
+        map.current.removeLayer('clusters-glow');
+      }
+      if (map.current.getLayer('unclustered-point')) {
+        map.current.removeLayer('unclustered-point');
+      }
+      if (map.current.getSource('pois')) {
+        map.current.removeSource('pois');
+      }
+
+      // Remove all POI markers
+      poiMarkersRef.current.getAll().forEach(hexPoi => {
+        if (hexPoi.marker) {
+          hexPoi.marker.remove();
+          // Remove the marker's DOM element
+          const el = hexPoi.marker.getElement();
+          if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        }
+      });
+      
+      // Clear the POI markers set
       poiMarkersRef.current = new HexagonPOISet();
       hexCells.current = [];
       lastHexRef.current = "initial";
       setAllPOIs([]);
       setOldCategories([]);
+
+      // Remove any orphaned marker containers
+      const markerContainers = document.querySelectorAll('.poi-marker');
+      markerContainers.forEach(container => {
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+      });
     }
     
     if (sourceMarker.current) {
@@ -394,7 +507,10 @@ const MapContainer = ({
         console.log('Adding hexagon:', h3Index, boundary);
         const polygon: GeoJSON.Feature<GeoJSON.Polygon> = {
           type: 'Feature',
-          properties: {},
+          properties: {
+            "height": 300, // Height in meters
+            "base_height": 0
+          },
           geometry: {
             type: 'Polygon',
             coordinates: [
@@ -417,11 +533,13 @@ const MapContainer = ({
         });
         map.current.addLayer({
           id: 'hexagons-layer',
-          type: 'fill',
+          type: 'fill-extrusion',
           source: 'hexagons',
           paint: {
             'fill-color': '#808080', // A medium grey color
-            'fill-opacity': 0.2, // Lower opacity for better visibility of the map
+            'fill-extrusion-height': ['get', 'height'], // Use height property
+            'fill-extrusion-base': ['get', 'base_height'], // Use base height property
+            'fill-extrusion-opacity': 0.75 // Slight transparency for a glowing effect
           },
         }, 'route');
         map.current.addLayer({
@@ -433,7 +551,7 @@ const MapContainer = ({
             'line-color': '#000000', // Black color for the outline
             'line-width': 1, // Width of the outline
           },
-        });
+        }, 'hexagons-layer');
       } else {
         (map.current.getSource('hexagons') as mapboxgl.GeoJSONSource).setData(hexCollection);
       }
@@ -477,11 +595,22 @@ const MapContainer = ({
   const handleStepChange = async (step: number, route: GeoJSON.Feature<GeoJSON.LineString>) => {
     console.log('Step change:', step);
   
-    // 1) Remove all POI markers
+    // 1) Remove all POI markers and clusters on initial step
     if (lastHexRef.current === "initial") {
       console.log('Initial hexagon already processed');
+      // Remove all markers
       poiMarkersRef.current.getAll().forEach(poi => poi.marker.remove());
       poiMarkersRef.current = new HexagonPOISet();
+      
+      // Remove all cluster layers and sources
+      ['clusters', 'clusters-glow', 'cluster-count'].forEach(layerId => {
+        if (map.current?.getLayer(layerId)) {
+          map.current.removeLayer(layerId);
+        }
+      });
+      if (map.current?.getSource('pois')) {
+        map.current.removeSource('pois');
+      }
     }
   
     // 2) Calculate the current hexagon index of the route based on the current step
@@ -497,32 +626,57 @@ const MapContainer = ({
       return;
     }
     const aheadHexes = hexCells.current.slice(idx, Math.min(idx + 3, hexCells.current.length));
-
     const aheadHexCollectionRes9 = aheadHexes.flatMap((hex) => cellToChildren(hex, 9)); // POIs indexed at resolution 9 in the database
 
-    // 3) Filter POIs by selected categories and ahead hexagons
+    // Skip if we're still in the same hexagon
     if (lastHexRef.current === currentHex) {
       console.log('Current hexagon already processed');
-      return
+      return;
     }
+
+    // 4) Filter POIs by selected categories and ahead hexagons
     const poisInAheadHexes = allPOIs.filter(
       (poi) =>
         poi.categories?.some((cat) => selectedCategories.includes(cat)) &&
         aheadHexCollectionRes9.includes(poi.h3Index)
     );
   
-    // 4) Add markers for POIs in the ahead hexagons
-    addMarkersByCategory(poisInAheadHexes, selectedCategories);
+    // 5) Update the map with new POIs
+    if (map.current) {
+      const source = map.current.getSource('pois') as mapboxgl.GeoJSONSource;
+      
+      // Convert POIs to GeoJSON
+      const geojsonData: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: poisInAheadHexes.map(poi => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [poi.locationLng, poi.locationLat]
+          },
+          properties: { ...poi }
+        }))
+      };
 
-    // 5) Remove POIs from hexagons that are left behind
+      if (source) {
+        // Update existing source
+        source.setData(geojsonData);
+      } else {
+        // Create new source and layers
+        await addPOIMarkers(poisInAheadHexes, map.current, selectedCategories);
+      }
+    }
+
+    // 6) Remove POIs from hexagons that are left behind
     const passedHexes = hexCells.current.slice(0, idx);
-    const passedHexCellsRes9 = passedHexes.flatMap((hex) => cellToChildren(hex, 9)); // POIs indexed at resolution 9 in the database
+    const passedHexCellsRes9 = passedHexes.flatMap((hex) => cellToChildren(hex, 9));
     const poisInPassedHexes = allPOIs.filter(
       (poi) =>
         poi.categories?.some((cat) => selectedCategories.includes(cat)) &&
         passedHexCellsRes9.includes(poi.h3Index)
     );
     removeMarkersByCategory(selectedCategories, poisInPassedHexes);
+    
     lastHexRef.current = currentHex;
   }
 
@@ -544,5 +698,3 @@ const MapContainer = ({
 }
 
 export default MapContainer;
-
-
