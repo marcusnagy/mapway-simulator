@@ -1,69 +1,40 @@
-# Welcome to your Lovable project
+# Route Simulation with POI Visualization
 
-## Project info
+This project simulates a car driving along a route from source to destination, using Uber H3 Hexcells to query and visualize Points of Interest (POIs) along the way. The system integrates with a backend service that handles POI data retrieval and processing.
 
-**URL**: https://lovable.dev/projects/97f127cc-183b-4f26-96e2-49a6a2978f96
+## Project Setup
 
-## How can I edit this code?
+### Prerequisites
 
-There are several ways of editing your application.
+Before starting, ensure you have:
+1. Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. An APIFY API key for backend service crawling
+3. A Mapbox API key for map rendering
 
-**Use Lovable**
+### Backend Integration
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/97f127cc-183b-4f26-96e2-49a6a2978f96) and start prompting.
+This project works in conjunction with the POI backend service available at:
+[https://github.com/marcusnagy/apify-poi-data](https://github.com/marcusnagy/apify-poi-data)
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Create an API key in mapbox and use it as input in the mapbox api key field
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Running the Project
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Start the backend service
+2. Start the frontend project
 
-Follow these steps:
+## Project Structure
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Frontend
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+The frontend project is built using React and Vite. It includes:
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/97f127cc-183b-4f26-96e2-49a6a2978f96) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- `src/components/mapui/HoverCardMarker.tsx`: Renders a hover card for POI markers
+- `src/components/mapui/Map.tsx`: Main map component that integrates with Mapbox
+- `src/components/mapui/POIMarker.tsx`: Renders POI markers on the map
+- `src/components/mapui/RouteSimulation.tsx`: Main component for route simulation
+- `src/components/mapui/Sidebar.tsx`: Sidebar component for POI filtering
