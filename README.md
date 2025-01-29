@@ -1,3 +1,9 @@
+<div align="center">
+  <img src="public/android-chrome-512x512.png" alt="Logo" width="200"/>
+</div>
+
+---
+
 # Route Simulation with POI Visualization
 
 This project simulates a car driving along a route from source to destination, using Uber H3 Hexcells to query and visualize Points of Interest (POIs) along the way. The system integrates with a backend service that handles POI data retrieval and processing.
